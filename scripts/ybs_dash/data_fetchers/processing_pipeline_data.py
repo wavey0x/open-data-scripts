@@ -12,7 +12,7 @@ def build_data(token, staker_data):
     balances = {}
     for token in burn_tokens:
         token = Contract(token)
-        balance = token.balanceOf(YCRV_FEE_BURNER, block_identifier=20190579)
+        balance = token.balanceOf(YCRV_FEE_BURNER)
         if balance > 1:
             balances[token.address] = {}
             balances[token.address]['balance'] = balance / 10 ** token.decimals()
