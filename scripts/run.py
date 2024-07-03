@@ -23,7 +23,9 @@ def push_to_gh(project_directory):
     home_dir = os.getenv('HOME')
     key = os.getenv('KEY')
     os.environ['GIT_SSH_COMMAND'] = f'ssh -i {home_dir}/.ssh/{key}' 
-
+    github_repo = 'github.com/wavey0x/open-data.git'
+    github_token = os.getenv('GITHUB_PAT')
+    remote_url = f'https://{github_token}@{github_repo}'
     os.chdir(project_directory)
 
     # Git commands to commit and push the changes
@@ -39,7 +41,7 @@ def push_to_gh(project_directory):
         subprocess.run(['git', 'commit', '-m', commit_message], check=True)
 
         # Push the changes
-        subprocess.run(['git', 'push', 'origin', 'master', '--force'], check=True)
+        subprocess.run(['git', 'push', remote_url, 'master', '--force'], check=True)
 
         print("Changes committed and pushed to GitHub successfully.")
 

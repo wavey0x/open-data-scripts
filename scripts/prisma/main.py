@@ -453,6 +453,7 @@ def get_fee_distributions():
     # logs = utils.utils.get_logs_chunked(prisma_fee_distributor, 'FeesReceived')
     current_week = prisma_fee_distributor.getWeek()
     cache_data = get_last_run_data()
+    target_week=0
     buffer = 3
     if 'emissions_schedule' in cache_data:
         target_week = cache_data['emissions_schedule'][-buffer]['system_week']
@@ -466,6 +467,7 @@ def get_fee_distributions():
         else:
             new_dict[system_week] = distros
     fee_data = new_dict
+    target_week = 40 if target_week == 0 else target_week
     start_block = utils.utils.get_week_start_block(token_locker.address, target_week-1)
     # creation_block = utils.utils.contract_creation_block(prisma_fee_distributor.address)
     logs = prisma_fee_distributor.events.FeesReceived.getLogs(fromBlock=start_block-1)
