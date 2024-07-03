@@ -66,7 +66,7 @@ def main():
     data['token_info'] = TOKEN_INFO
 
     json_filename = os.getenv('PRISMA_JSON_FILE')
-    project_directory = os.getenv('TARGET_PROJECT_DIRECTORY')
+    project_directory = os.getenv('PROJECT_DIRECTORY')
     write_data_as_json(data, project_directory, json_filename)
 
     end_time = time.time()  # Get the end time

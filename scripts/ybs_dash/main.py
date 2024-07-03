@@ -2,17 +2,20 @@ from brownie import Contract
 import time, json, subprocess, os, datetime
 from utils import utils as utilities
 from constants import YBS_REGISTRY
-# Import data fetchers
 from scripts.ybs_dash.data_fetchers import (
     peg_data, 
     strategy_data,
-    token_price_data, #, burner, voter, gauge_controller
+    token_price_data,
     processing_pipeline_data,
     ybs_data,
 )
+from dotenv import load_dotenv
+
+load_dotenv()
 
 staker_data = {}
 staker_data_str = {}
+ts = time.time()
 
 def main():
     global staker_data
@@ -29,10 +32,15 @@ def main():
         staker_data[token]['strategy_data']['swap_min_usd'] *= price
         staker_data[token]['strategy_data']['swap_max_usd'] *= price
 
+    staker_data = {
+        'data': staker_data,
+        'last_update': int(ts)
+    }
     global staker_data_str
     staker_data_str = stringify_dicts(staker_data)
     json_filename = os.getenv('YBS_JSON_FILE')
-    project_directory = os.getenv('TARGET_PROJECT_DIRECTORY')
+    project_directory = os.getenv('PROJECT_DIRECTORY')
+    print('saving to ... ', project_directory, json_filename)
     write_data_as_json(staker_data_str, project_directory, json_filename)
     
 

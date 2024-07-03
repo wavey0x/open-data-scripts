@@ -20,3 +20,4 @@ scripts/private_queries.py
 cache
 scripts/charts.py
 data
+ybs_data.json

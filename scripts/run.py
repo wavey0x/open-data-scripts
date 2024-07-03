@@ -5,7 +5,7 @@ import shutil
 
 def main():
     ybs_job.main()
-    prisma_job.main()
+    # prisma_job.main()
 
     destination_dir = '../open-data/'
     os.makedirs(destination_dir, exist_ok=True)
@@ -16,7 +16,7 @@ def main():
 
     print("Files copied successfully.")
     
-    if os.getenv('ENV') != 'dev':
+    if os.getenv('ENV') != 'xdev':
         push_to_gh(destination_dir)
 
 def push_to_gh(project_directory):
@@ -39,7 +39,7 @@ def push_to_gh(project_directory):
         subprocess.run(['git', 'commit', '-m', commit_message], check=True)
 
         # Push the changes
-        subprocess.run(['git', 'push', '--force-with-lease', '--force'], check=True)
+        subprocess.run(['git', 'push', 'origin', 'master', '--force'], check=True)
 
         print("Changes committed and pushed to GitHub successfully.")
 

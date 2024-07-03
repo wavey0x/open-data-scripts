@@ -131,7 +131,7 @@ def run_queries():
 
         print(f"Formatted query results to json an saved results to '{output_file}'.")
 
-    project_directory = os.getenv('TARGET_PROJECT_DIRECTORY')
+    project_directory = os.getenv('PROJECT_DIRECTORY')
     if os.getenv('ENV') != 'dev':
         push_to_gh(project_directory)
 

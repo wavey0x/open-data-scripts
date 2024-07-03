@@ -1,4 +1,4 @@
-from brownie import Contract, ZERO_ADDRESS, chain
+from brownie import Contract, ZERO_ADDRESS, chain, interface
 from constants import REGISTRY_V2, REGISTRY_V3, MAX_BPS_EXTENDED, DAY, YEAR
 
 def build_data(token, staker_data):
@@ -61,7 +61,7 @@ def lookup_strategy(vault, is_v2):
         if current_debt > dr:
             strategy = s
             dr = current_debt
-    return Contract(strategy)
+    return interface.IYBSStrategy(strategy)
 
 def get_profit_release_data(vault, is_v2, decimals):
     """
