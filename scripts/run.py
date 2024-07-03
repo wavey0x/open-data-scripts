@@ -5,7 +5,7 @@ import shutil
 
 def main():
     ybs_job.main()
-    # prisma_job.main()
+    prisma_job.main()
 
     destination_dir = '../open-data/'
     os.makedirs(destination_dir, exist_ok=True)
