@@ -110,8 +110,8 @@ def get_profit_release_data(vault, is_v2, decimals):
         }
     
     tokens_per_second = locked_profit / unlock_period / 10 ** decimals
-    apr = (tokens_per_second * YEAR) / total_assets
     total_assets = vault.totalAssets() / 10 ** decimals
+    apr = (tokens_per_second * YEAR) / total_assets
     return {
         'unlock_rate': tokens_per_second, 
         'unlock_date': unlock_date,
