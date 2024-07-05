@@ -1,6 +1,6 @@
 from brownie import Contract, ZERO_ADDRESS, chain
 import utils as utilities
-from constants import YCRV_SPLITTER, YCRV_RECEIVER, YCRV_FEE_BURNER, TRADE_HANDLER, YCRV
+from constants import YCRV_SPLITTER, YCRV_RECEIVER, YCRV_FEE_BURNER, TRADE_HANDLER, YCRV, CRVUSD
 
 def build_data(token, staker_data):
     if token != YCRV:
@@ -9,6 +9,9 @@ def build_data(token, staker_data):
     receiver = Contract(YCRV_RECEIVER)
     burner = Contract(YCRV_FEE_BURNER)
     burn_tokens = list(burner.getApprovals(TRADE_HANDLER))
+    if CRVUSD not in burn_tokens:
+        burn_tokens.append(CRVUSD)
+        
     balances = {}
     for token in burn_tokens:
         token = Contract(token)

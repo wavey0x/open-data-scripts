@@ -8,11 +8,14 @@ from utils.cache import memory
 DAY = 60 * 60 * 24
 WEEK = DAY * 7
 
-def get_week_by_ts(ts):
-    first_week = 1691625600
-    if ts < first_week:
+def get_week_by_ts(contract, ts):
+    contract = Contract(contract)
+    block = contract_creation_block(contract.address)
+    start_week = contract.getWeek(block_identifier=block)
+    first_week_start_ts = get_week_start_ts(contract.address, week_number=start_week)
+    if ts < first_week_start_ts:
         raise Exception("timestamp is before protocol launch")
-    diff = ts - first_week
+    diff = ts - first_week_start_ts
     return diff // WEEK
 
 @memory.cache()

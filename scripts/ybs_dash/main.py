@@ -1,4 +1,4 @@
-from brownie import Contract
+from brownie import Contract, chain
 import time, json, subprocess, os, datetime
 from utils import utils as utilities
 from constants import YBS_REGISTRY
@@ -16,6 +16,7 @@ load_dotenv()
 staker_data = {}
 staker_data_str = {}
 ts = time.time()
+height = chain.height
 
 def main():
     global staker_data
@@ -34,7 +35,8 @@ def main():
 
     staker_data = {
         'data': staker_data,
-        'last_update': int(ts)
+        'last_update': int(ts),
+        'last_update_block': height,
     }
     global staker_data_str
     staker_data_str = stringify_dicts(staker_data)
