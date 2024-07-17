@@ -23,7 +23,7 @@ def build_data(token, staker_data):
 
         
     reward_token = staker_data['reward_token']
-    receiver_balance = reward_token.balanceOf(receiver) / 10 ** staker_data['strategy_data']['reward_token_decimals']
+    receiver_balance = reward_token.balanceOf(receiver) / 10 ** reward_token.decimals()
     splitter = Contract(YCRV_SPLITTER)
     split_ratios = splitter.getSplits()
         

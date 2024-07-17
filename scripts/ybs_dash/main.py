@@ -24,11 +24,10 @@ def main():
         data.update({
             'peg_data': peg_data.build_data(token, data, 10_000e18),
             'strategy_data': strategy_data.build_data(token, data),
-            'price_data': token_price_data.build_data(token, data),
             'pipeline_data': processing_pipeline_data.build_data(token, data),
-            'ybs_data': ybs_data.build_data(token, data)
         })
-        
+        data['ybs_data'] = ybs_data.build_data(token, data)
+        data['price_data'] = token_price_data.build_data(token, data)
         price = data['price_data'][data['reward_token'].address]['price']
         data['strategy_data']['swap_min_usd'] *= price
         data['strategy_data']['swap_max_usd'] *= price

@@ -724,7 +724,7 @@ def write_data_as_json(data, project_directory="", json_filename=None):
 
     # Create the full file path
     json_file_path = os.path.join(project_directory, json_filename)
-
+    print(f'Saving file to {json_file_path}')
     # Ensure the project directory exists
     if project_directory and not os.path.exists(project_directory):
         os.makedirs(project_directory)
