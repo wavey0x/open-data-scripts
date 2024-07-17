@@ -718,8 +718,18 @@ def get_last_run_data():
         return {}
     return result
 
-def write_data_as_json(data, project_directory="", json_filename=os.getenv('PRISMA_JSON_FILE')):
-    json_file_path = os.path.join(project_directory,json_filename)
+def write_data_as_json(data, project_directory="", json_filename=None):
+    if json_filename is None:
+        json_filename = os.getenv('PRISMA_JSON_FILE', 'default.json')
+
+    # Create the full file path
+    json_file_path = os.path.join(project_directory, json_filename)
+
+    # Ensure the project directory exists
+    if project_directory and not os.path.exists(project_directory):
+        os.makedirs(project_directory)
+
+    # Write data to the file
     with open(json_file_path, 'w') as file:
         json.dump(data, file, indent=4)
 
