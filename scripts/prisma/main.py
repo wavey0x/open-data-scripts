@@ -39,6 +39,77 @@ TOKEN_INFO = {
     },
 }
 
+incentive_voting = Contract(constants.INCENTIVE_VOTING)
+
+def get_votes():
+    incentive_voting = Contract(constants.INCENTIVE_VOTING)
+    receivers = get_all_receivers()
+    current_week = incentive_voting.getWeek()
+    data = {}
+    weekly_emissions = emissions_by_week()
+    weekly_emissions = {item['system_week']: item for item in weekly_emissions}
+    for week in range(0,current_week):
+        total_weight = incentive_voting.getTotalWeightAt(week)
+        if total_weight == 0:
+            continue
+        if week not in weekly_emissions:
+            continue
+        emissions = weekly_emissions[week]['allocated_emissions']
+
+        ts = utils.utils.get_week_start_ts(incentive_voting.address, week)
+        dt_object = datetime.datetime.fromtimestamp(ts)
+        week_str = f'week_{week}'
+        data[week_str] = {}
+        data[week_str]['_start_time'] = dt_object.strftime("%Y-%m-%d %H:%M:%S")
+        data[week_str]['receivers'] = {}
+        data[week_str]['_total_weight'] = total_weight
+        data[week_str]['_total_emissions'] = emissions
+        for r in receivers:
+            receiver_info = {}
+            r_weight = incentive_voting.getReceiverWeightAt(r, week)
+            pct = r_weight / total_weight
+            data[week_str]['receivers'][f'receiver_id_{r}'] = {
+                'weight': r_weight,
+                'name': f'{receivers[r]["name"]} {receivers[r]["type"]}',
+                'pct': float(f'{pct*100:,.4f}'),
+                'emissions': int(emissions * pct)
+            }
+
+    import json
+    f = 'emissions.json'
+    with open(f, 'w') as file:
+        json.dump(data, file, indent=4)
+    assert False
+
+def get_all_receivers(week=incentive_voting.getWeek()):
+    incentive_voting = Contract(constants.INCENTIVE_VOTING)
+    # Load incentive options
+    url = f'https://api.prismafinance.com/api/v1/emissionVotes'
+    data = requests.get(url).json()
+    receiver_data = data['data']['receiverToWeights']
+
+    new_data = {}
+    for id, address in enumerate(receiver_data):
+        d = {}
+        d['address'] = address
+        # new_data[id] = d
+        for weight in receiver_data[address]['weights']:
+            d['type'] = weight["type"]
+            i = weight["id"]
+            # name = receiver_data[address]["name"]
+            d['name'] = receiver_data[address]["name"]
+            new_data[i] = d
+            w = incentive_voting.getReceiverWeightAt(weight["id"], week)
+            t = incentive_voting.getTotalWeightAt(week)
+            pct = w/t
+            try:
+                max = Contract(address).maxWeeklyEmissionPct()
+                alert = '🚨' if (pct * 10_000) > max else ''
+            except:
+                alert = ''
+            print(f'{weight["id"]} {weight["type"]} {receiver_data[address]["name"]} {address} | New global weight: {pct*100:,.2f} {alert}')
+    return new_data
+    
 def main():
     data = stats()
     for week in range(len(data["liquid_lockers"]["cvxPrisma"]["weekly_data"])):
@@ -264,7 +335,7 @@ def get_account_weekly_earned(user, week, block=height):
         + user[2:]
         + "0000000000000000000000000000000000000000000000000000000000009005"
     )
-    data = int(web3.eth.getStorageAt(vault.address, int(key.hex(), 16) + week // 2, block_identifier=block).hex(), 16)
+    data = int(web3.eth.get_storage_at(vault.address, int(key.hex(), 16) + week // 2, block_identifier=block).hex(), 16)
     
     if week % 2:
         account_weekly_earned = data >> 128

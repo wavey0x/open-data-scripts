@@ -1,5 +1,8 @@
+import os
+import time
+import json
 from brownie import Contract, chain
-import time, json, subprocess, os, datetime
+from dotenv import load_dotenv
 from utils import utils as utilities
 from constants import YBS_REGISTRY
 from scripts.ybs_dash.data_fetchers import (
@@ -9,97 +12,86 @@ from scripts.ybs_dash.data_fetchers import (
     processing_pipeline_data,
     ybs_data,
 )
-from dotenv import load_dotenv
 
 load_dotenv()
 
-staker_data = {}
-staker_data_str = {}
-ts = time.time()
-height = chain.height
-
 def main():
-    global staker_data
     staker_data = populate_staker_info()
-    for token in staker_data:
-        staker_data[token]['peg_data'] = peg_data.build_data(token, staker_data[token], 10_000e18)
-        staker_data[token]['strategy_data'] = strategy_data.build_data(token, staker_data[token])
-        staker_data[token]['price_data'] = token_price_data.build_data(token, staker_data[token])
-        staker_data[token]['pipeline_data'] = processing_pipeline_data.build_data(token, staker_data[token])
-        staker_data[token]['ybs_data'] = ybs_data.build_data(token, staker_data[token])
-
-        # Fill in more data
-        price = staker_data[token]['price_data'][staker_data[token]['reward_token'].address]['price']
-        staker_data[token]['strategy_data']['swap_min_usd'] *= price
-        staker_data[token]['strategy_data']['swap_max_usd'] *= price
+    current_time = int(time.time())
+    current_height = chain.height
+    
+    for token, data in staker_data.items():
+        data.update({
+            'peg_data': peg_data.build_data(token, data, 10_000e18),
+            'strategy_data': strategy_data.build_data(token, data),
+            'price_data': token_price_data.build_data(token, data),
+            'pipeline_data': processing_pipeline_data.build_data(token, data),
+            'ybs_data': ybs_data.build_data(token, data)
+        })
+        
+        price = data['price_data'][data['reward_token'].address]['price']
+        data['strategy_data']['swap_min_usd'] *= price
+        data['strategy_data']['swap_max_usd'] *= price
 
     staker_data = {
         'data': staker_data,
-        'last_update': int(ts),
-        'last_update_block': height,
+        'last_update': current_time,
+        'last_update_block': current_height,
     }
-    global staker_data_str
-    staker_data_str = stringify_dicts(staker_data)
-    json_filename = os.getenv('YBS_JSON_FILE')
-    project_directory = os.getenv('PROJECT_DIRECTORY')
-    print('saving to ... ', project_directory, json_filename)
-    write_data_as_json(staker_data_str, project_directory, json_filename)
     
+    staker_data_str = stringify_dicts(staker_data)
+    save_data_as_json(staker_data_str)
 
 def populate_staker_info():
-    result = {}
     registry = Contract(YBS_REGISTRY)
     num_tokens = registry.numTokens()
+    
+    result = {}
     for i in range(num_tokens):
         token = registry.tokens(i)
-        data = {}
-        data['token'] = Contract(token)
         deployment = registry.deployments(token)
-        ybs = Contract(deployment['yearnBoostedStaker'])
-        rewards_distributor = Contract(deployment['rewardDistributor'])
-        utils = Contract(deployment['utilities'])
-        data['ybs'] = ybs
-        data['decimals'] = data['token'].decimals()
-        data['symbol'] = data['token'].symbol()
-        data['rewards'] = rewards_distributor
-        data['utils'] = utils
-        data['ybs_deploy_block'] = utilities.contract_creation_block(ybs.address)
-        data['reward_token'] = Contract(data['rewards'].rewardToken())
-        data['reward_token_is_v2'] = True
+        
+        data = {
+            'token': Contract(token),
+            'ybs': Contract(deployment['yearnBoostedStaker']),
+            'decimals': Contract(token).decimals(),
+            'symbol': Contract(token).symbol(),
+            'rewards': Contract(deployment['rewardDistributor']),
+            'utils': Contract(deployment['utilities']),
+            'ybs_deploy_block': utilities.contract_creation_block(deployment['yearnBoostedStaker']),
+        }
+        
+        reward_token = Contract(data['rewards'].rewardToken())
         try:
-            data['reward_token_underlying'] = Contract(data['reward_token'].asset())
+            reward_token_underlying = Contract(reward_token.asset())
             data['reward_token_is_v2'] = False
         except:
-            data['reward_token_underlying'] = Contract(data['reward_token'].token())
+            reward_token_underlying = Contract(reward_token.token())
+            data['reward_token_is_v2'] = True
+        
+        data['reward_token'] = reward_token
+        data['reward_token_underlying'] = reward_token_underlying
+        
         result[token] = data
+        
     return result
 
-
 def stringify_dicts(data):
-    """
-    Recursively replace eth-brownie Contract objects in a dictionary with their address strings.
-
-    Args:
-    data (dict): The dictionary to process.
-
-    Returns:
-    dict: The processed dictionary with Contract objects replaced by their addresses.
-    """
     if isinstance(data, dict):
-        # Go through each dictionary item
         return {key: stringify_dicts(value) for key, value in data.items()}
     elif isinstance(data, list):
-        # Process each element in the list
         return [stringify_dicts(item) for item in data]
     elif isinstance(data, Contract):
-        # Replace Contract object with its address
         return data.address
-    else:
-        # Return the item as is if it's neither a dict, a list, nor a Contract
-        return data
+    return data
 
-
-def write_data_as_json(data, project_directory="", json_filename=os.getenv('JSON_FILE')):
-    json_file_path = os.path.join(project_directory,json_filename)
+def save_data_as_json(data):
+    project_directory = os.getenv('PROJECT_DIRECTORY')
+    json_filename = os.getenv('YBS_JSON_FILE')
+    json_file_path = os.path.join(project_directory, json_filename)
+    
     with open(json_file_path, 'w') as file:
         json.dump(data, file, indent=4)
+
+if __name__ == "__main__":
+    main()

@@ -207,3 +207,4 @@ def sql_query_boost_data(sql):
     results = con.execute(sql).fetchdf()
     pd.set_option('display.max_colwidth', None)
     return results
+
