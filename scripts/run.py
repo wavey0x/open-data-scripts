@@ -10,7 +10,11 @@ def main():
     destination_dir = '../open-data/'
     os.makedirs(destination_dir, exist_ok=True)
 
-    source_files = ['./data/ybs_data.json', './data/prisma_liquid_locker_data.json']
+    source_files = [
+        './data/ybs_data.json', 
+        './data/prisma_liquid_locker_data.json',
+        './data/raw_boost_data.json',
+    ]
     for file in source_files:
         shutil.copy(file, destination_dir)
 
@@ -28,12 +32,18 @@ def push_to_gh(project_directory):
     remote_url = f'https://{github_token}@{github_repo}'
     os.chdir(project_directory)
 
-    # Git commands to commit and push the changes
     try:
+        # Print current working directory
+        print(f"Current working directory: {os.getcwd()}")
+
+        # Git status
+        subprocess.run(['git', 'status'], check=True)
+
         # Add the file to staging
         subprocess.run(['git', 'add', '-A'], check=True)
 
         # Commit the changes
+        print(f'Remote URL: {remote_url}')
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
         commit_message = f'automated data write: {formatted_datetime}'
