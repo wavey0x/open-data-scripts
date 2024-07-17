@@ -271,7 +271,7 @@ def get_active_forwarders():
     factory = Contract(constants.BOOST_FACTORY)
     # logs = utils.utils.get_logs_chunked(factory, 'ForwarderConfigured')
     creation_block = utils.utils.contract_creation_block(factory.address)
-    logs = factory.events.ForwarderConfigured.getLogs(fromBlock=creation_block)
+    logs = factory.events.ForwarderConfigured.get_logs(fromBlock=creation_block)
     fee = 0
     active_delegates = []
     for log in logs:
@@ -492,7 +492,7 @@ def get_boost_delegation_fees(account, week):
 def xget_fee_distributions():
     # logs = utils.utils.get_logs_chunked(prisma_fee_distributor, 'FeesReceived')
     creation_block = utils.utils.contract_creation_block(prisma_fee_distributor.address)
-    logs = prisma_fee_distributor.events.FeesReceived.getLogs(fromBlock=creation_block)
+    logs = prisma_fee_distributor.events.FeesReceived.get_logs(fromBlock=creation_block)
     fee_data = {}
     for l in logs:
         log_data = l.args
@@ -541,7 +541,7 @@ def get_fee_distributions():
     target_week = 40 if target_week == 0 else target_week
     start_block = utils.utils.get_week_start_block(token_locker.address, target_week-1)
     # creation_block = utils.utils.contract_creation_block(prisma_fee_distributor.address)
-    logs = prisma_fee_distributor.events.FeesReceived.getLogs(fromBlock=start_block-1)
+    logs = prisma_fee_distributor.events.FeesReceived.get_logs(fromBlock=start_block-1)
     for l in logs:
         log_data = l.args
         week = log_data.week + 1 # Become claimable in following week

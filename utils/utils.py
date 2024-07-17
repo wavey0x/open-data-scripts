@@ -150,7 +150,7 @@ def get_logs_chunked(contract, event_name, start_block=0, end_block=0, chunk_siz
 
     logs = []
     while start_block < end_block:
-        logs += event.getLogs(fromBlock=start_block, toBlock=min(end_block, start_block + chunk_size))
+        logs += event.get_logs(fromBlock=start_block, toBlock=min(end_block, start_block + chunk_size))
         start_block += chunk_size
 
     return logs

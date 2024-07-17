@@ -76,7 +76,7 @@ def get_all_users(token):
         pass
 
     ybs = data['ybs']
-    logs = ybs.events.Staked.getLogs(
+    logs = ybs.events.Staked.get_logs(
         fromBlock=max(data['ybs_deploy_block'], last_update['block']), 
         toBlock=height
     )
