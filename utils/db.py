@@ -42,6 +42,7 @@ class UserInfo(Base):
     boost = Column(Numeric(30, 18))
     map = Column(JSON)
     rewards_earned = Column(Numeric(30, 18))
+    total_realized = Column(Numeric(30, 18))
     ybs = Column(String, primary_key=True)
 
 # Define metadata
