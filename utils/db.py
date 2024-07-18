@@ -78,7 +78,6 @@ def insert_week_info(record):
         
         # Commit the transaction
         session.commit()
-        print("Record inserted successfully!")
     except Exception as e:
         # Rollback the transaction in case of error
         session.rollback()

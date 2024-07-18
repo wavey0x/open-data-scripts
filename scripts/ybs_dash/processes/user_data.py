@@ -14,13 +14,9 @@ def main():
     staker_info = populate_staker_info()
 
     for token, info in staker_info.items():
-        last_week = info['ybs'].getWeek() - 1
-        fill_weeks(token, info, last_week)
+        fill_weeks(token, info)
 
-    complete_job(last_week)
-    assert False
-
-def fill_weeks(token, info, last_week):
+def fill_weeks(token, info):
     ybs = info['ybs']
     utils = info['utils']
     rewards = info['rewards']
@@ -29,12 +25,15 @@ def fill_weeks(token, info, last_week):
     decimals = ybs.decimals()
     max_weeks = ybs.MAX_STAKE_GROWTH_WEEKS()
 
+    current_week = ybs.getWeek() - 1
     last_filled_week = db_utils.get_highest_week_id_for_token(token)
-    to_week = last_filled_week - 1 if not None else - 1
+    if not last_filled_week:
+        last_filled_week = utilities.get_launch_week(ybs.address) - 1
 
-    for week in range(last_week, to_week, -1):
-        if week == last_week:
-            break
+    print(f'Current week: {current_week}')
+    print(f'Last filled week: {last_filled_week}')
+    for week in range(current_week, last_filled_week, -1):
+        print(f'Iterating over week {week}....')
         try:
             end_block = utilities.get_week_end_block(ybs.address, week)
             supply = ybs.totalSupply(block_identifier=end_block) / 10 ** decimals
@@ -64,8 +63,8 @@ def fill_weeks(token, info, last_week):
                 continue
             balance = ybs.balanceOf(user, block_identifier=end_block) / 1e18
             acct_data = ybs.accountData(user, block_identifier=end_block)    
-            stake_map = build_stake_map(
-                ybs, user, acct_data, week, end_block, max_weeks
+            stake_map, realized = build_stake_map(
+                ybs, user, acct_data, week, end_block, max_weeks, decimals
             )
 
             db_utils.insert_user_info({
@@ -78,29 +77,46 @@ def fill_weeks(token, info, last_week):
                 'map': stake_map,
                 'rewards_earned': rewards.getClaimableAt(user, week) / 10 ** reward_decimals,
                 'ybs': ybs.address,
+                'total_realized': realized,
             })
             print(f'User {user} @ week {week} successfully written.')
 
-def build_stake_map(ybs, user, acct_data, week, block, max_weeks):
+
+def build_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals):
     week_offset = week - acct_data['lastUpdateWeek']
     bitmap = acct_data['updateWeeksBitmap']
-    bitstring = format(bitmap, '08b')[::-1][:-max_weeks]
-    bitarray = [int(char) for char in bitstring]
+    bitstring = format(bitmap, '08b')[::-1][:-(max_weeks-1)]    # Reverse order and trim
+    bitarray = [int(char) for char in bitstring]            # Convert to array
+    # bitarray = shift_array(bitarray, week_offset) # Adjust for offset
     realized = acct_data['realizedStake']
     pending_map = {}
+
+    # Example: user has 
+    # [1,           0,      1,      0,      1]
+    # [current_week, cw+1,  cw+2,   cw+3,   cw+4 ]
+    # 40, 41 , 47 , 49
+    # 45, 46, 52, 54
+    print(bitarray)
     for i, bit in enumerate(bitarray):
-        target_week = week + max_weeks - (week_offset + i)
+        target_week = week - week_offset + (len(bitarray) - 1 - i)
         if int(bit) != 1:
             continue
-        target_week = week + max_weeks - (week_offset + i)
-
-        if week_offset > i:
+        
+        print(f'Checking week: {target_week}')
+        if target_week <= week:
             realized += ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
-            )['weight']
+            )['weight'] / 10 ** decimals
         else:
-            pending_map[target_week] = ybs.accountWeeklyToRealize(
+            amt = ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
-            )['weight']
+            )['weight'] / 10 ** decimals
+            pending_map[target_week] = amt
 
-    return pending_map
+    return pending_map, realized
+
+def shift_array(arr, offset):
+    length = len(arr)
+    if offset >= length:
+        return [0] * length
+    return [0] * offset + arr[:length - offset]

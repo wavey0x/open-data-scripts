@@ -19,6 +19,16 @@ def get_week_by_ts(contract, ts):
     return diff // WEEK
 
 @memory.cache()
+def get_launch_week(contract):
+    deploy_block = contract_creation_block(contract)
+    deploy_ts = chain[deploy_block].timestamp
+    current_week_start = (chain.time() / WEEK) * WEEK
+    offset = current_week_start - deploy_ts
+    num_weeks = offset / WEEK
+    contract = Contract(contract)
+    return contract.getWeek() - num_weeks
+
+@memory.cache()
 def get_week_start_block(contract, week_number=0):
     ts = get_week_start_ts(contract, week_number)
     return closest_block_after_timestamp(ts)
