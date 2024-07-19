@@ -99,7 +99,14 @@ def build_global_stake_map(ybs, week, block, max_weeks, decimals):
             target_week, block_identifier=block
         )['weight'] / 10 ** decimals
         if amt > 0:
-            pending_map[target_week] = amt
+            pending_map[target_week] = {
+                'amount': amt,
+                'week_end_block': utilities.get_week_end_block(ybs.address, target_week),
+                'week_start_block': utilities.get_week_start_block(ybs.address, target_week),
+                'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
+                'week_end_ts': utilities.get_week_end_ts(ybs.address, target_week),
+                'max_weeks': max_weeks,
+            }
 
     return pending_map
 
@@ -112,11 +119,6 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
     realized = acct_data['realizedStake'] / 10 ** decimals
     pending_map = {}
 
-    # Example: user has 
-    # [1,           0,      1,      0,      1]
-    # [current_week, cw+1,  cw+2,   cw+3,   cw+4 ]
-    # 40, 41 , 47 , 49
-    # 45, 46, 52, 54
     for i, bit in enumerate(bitarray):
         target_week = week - week_offset + (len(bitarray) - 1 - i)
         if int(bit) != 1:
@@ -129,7 +131,14 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
             amt = ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
             )['weight'] / 10 ** decimals
-            pending_map[target_week] = amt
+            pending_map[target_week] = {
+                'amount':amt,
+                'week_end_block': utilities.get_week_end_block(ybs.address, target_week),
+                'week_start_block': utilities.get_week_start_block(ybs.address, target_week),
+                'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
+                'week_end_ts': utilities.get_week_end_ts(ybs.address, target_week),
+                'max_weeks': max_weeks,
+            }
 
     return pending_map, realized
 
