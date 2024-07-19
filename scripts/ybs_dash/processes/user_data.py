@@ -40,6 +40,7 @@ def fill_weeks(token, info):
             global_weight = ybs.getGlobalWeightAt(week) / 10 ** decimals
             start_ts = utilities.get_week_start_ts(ybs.address, week)
             end_ts = utilities.get_week_end_ts(ybs.address, week)
+            stake_map = build_global_stake_map(ybs, week, end_block, max_weeks, decimals)
             db_utils.insert_week_info({
                 'week_id': week,
                 'token': token,
@@ -52,7 +53,8 @@ def fill_weeks(token, info):
                 'start_block': utilities.get_week_start_block(ybs.address, week),
                 'end_block': end_block,
                 'start_time_str': datetime.fromtimestamp(start_ts).strftime("%Y-%m-%d"),
-                'end_time_str': datetime.fromtimestamp(end_ts).strftime("%Y-%m-%d")
+                'end_time_str': datetime.fromtimestamp(end_ts).strftime("%Y-%m-%d"),
+                'stake_map': stake_map
             })
             print(f'Week {week} successfully written.')
         except:
@@ -63,7 +65,7 @@ def fill_weeks(token, info):
                 continue
             balance = ybs.balanceOf(user, block_identifier=end_block) / 1e18
             acct_data = ybs.accountData(user, block_identifier=end_block)    
-            stake_map, realized = build_stake_map(
+            stake_map, realized = build_user_stake_map(
                 ybs, user, acct_data, week, end_block, max_weeks, decimals
             )
 
@@ -74,7 +76,7 @@ def fill_weeks(token, info):
                 'weight': weight,
                 'balance': balance,
                 'boost': weight / balance,
-                'map': stake_map,
+                'stake_map': stake_map,
                 'rewards_earned': rewards.getClaimableAt(user, week) / 10 ** reward_decimals,
                 'ybs': ybs.address,
                 'total_realized': realized,
@@ -82,7 +84,26 @@ def fill_weeks(token, info):
             print(f'User {user} @ week {week} successfully written.')
 
 
-def build_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals):
+def test():
+    ybs = Contract('0xF4C6e0E006F164535508787873d86b84fe901975')
+    map = build_global_stake_map(
+        ybs, 41, utilities.get_week_end_block(ybs.address, 41), 4, 18
+    )
+    print(map)
+
+def build_global_stake_map(ybs, week, block, max_weeks, decimals):
+    pending_map = {}
+    for i in range(max_weeks):
+        target_week = week + 1 + i
+        amt = ybs.globalWeeklyToRealize(
+            target_week, block_identifier=block
+        )['weight'] / 10 ** decimals
+        if amt > 0:
+            pending_map[target_week] = amt
+
+    return pending_map
+
+def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals):
     week_offset = week - acct_data['lastUpdateWeek']
     bitmap = acct_data['updateWeeksBitmap']
     bitstring = format(bitmap, '08b')[::-1][:-(max_weeks-1)]    # Reverse order and trim
