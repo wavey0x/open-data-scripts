@@ -34,31 +34,29 @@ def fill_weeks(token, info):
     print(f'Last filled week: {last_filled_week}')
     for week in range(current_week, last_filled_week, -1):
         print(f'Iterating over week {week}....')
-        try:
-            end_block = utilities.get_week_end_block(ybs.address, week)
-            supply = ybs.totalSupply(block_identifier=end_block) / 10 ** decimals
-            global_weight = ybs.getGlobalWeightAt(week) / 10 ** decimals
-            start_ts = utilities.get_week_start_ts(ybs.address, week)
-            end_ts = utilities.get_week_end_ts(ybs.address, week)
-            stake_map = build_global_stake_map(ybs, week, end_block, max_weeks, decimals)
-            db_utils.insert_week_info({
-                'week_id': week,
-                'token': token,
-                'weight': global_weight,
-                'total_supply': supply,
-                'boost': global_weight / supply,
-                'ybs': ybs.address,
-                'start_ts': start_ts,
-                'end_ts': end_ts,
-                'start_block': utilities.get_week_start_block(ybs.address, week),
-                'end_block': end_block,
-                'start_time_str': datetime.fromtimestamp(start_ts).strftime("%Y-%m-%d"),
-                'end_time_str': datetime.fromtimestamp(end_ts).strftime("%Y-%m-%d"),
-                'stake_map': stake_map
-            })
-            print(f'Week {week} successfully written.')
-        except:
-            break
+        end_block = utilities.get_week_end_block(ybs.address, week)
+        supply = ybs.totalSupply(block_identifier=end_block) / 10 ** decimals
+        global_weight = ybs.getGlobalWeightAt(week) / 10 ** decimals
+        start_ts = utilities.get_week_start_ts(ybs.address, week)
+        end_ts = utilities.get_week_end_ts(ybs.address, week)
+        stake_map = build_global_stake_map(ybs, week, end_block, max_weeks, decimals)
+        db_utils.insert_week_info({
+            'week_id': week,
+            'token': token,
+            'weight': global_weight,
+            'total_supply': supply,
+            'boost': global_weight / supply,
+            'ybs': ybs.address,
+            'start_ts': start_ts,
+            'end_ts': end_ts,
+            'start_block': utilities.get_week_start_block(ybs.address, week),
+            'end_block': end_block,
+            'start_time_str': datetime.fromtimestamp(start_ts).strftime("%Y-%m-%d"),
+            'end_time_str': datetime.fromtimestamp(end_ts).strftime("%Y-%m-%d"),
+            'stake_map': stake_map
+        })
+        print(f'Week {week} successfully written.')
+
         for user in users:
             weight = ybs.getAccountWeightAt(user, week) / 1e18
             if weight == 0:
@@ -101,7 +99,6 @@ def build_global_stake_map(ybs, week, block, max_weeks, decimals):
         if amt > 0:
             pending_map[target_week] = {
                 'amount': amt,
-                'week_start_block': utilities.get_week_start_block(ybs.address, target_week),
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
             }
@@ -131,7 +128,6 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
             )['weight'] / 10 ** decimals
             pending_map[target_week] = {
                 'amount':amt,
-                'week_start_block': utilities.get_week_start_block(ybs.address, target_week),
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
             }
