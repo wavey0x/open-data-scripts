@@ -101,10 +101,8 @@ def build_global_stake_map(ybs, week, block, max_weeks, decimals):
         if amt > 0:
             pending_map[target_week] = {
                 'amount': amt,
-                'week_end_block': utilities.get_week_end_block(ybs.address, target_week),
                 'week_start_block': utilities.get_week_start_block(ybs.address, target_week),
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
-                'week_end_ts': utilities.get_week_end_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
             }
 
@@ -133,10 +131,8 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
             )['weight'] / 10 ** decimals
             pending_map[target_week] = {
                 'amount':amt,
-                'week_end_block': utilities.get_week_end_block(ybs.address, target_week),
                 'week_start_block': utilities.get_week_start_block(ybs.address, target_week),
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
-                'week_end_ts': utilities.get_week_end_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
             }
 
