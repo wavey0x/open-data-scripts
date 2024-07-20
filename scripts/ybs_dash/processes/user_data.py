@@ -99,7 +99,7 @@ def insert_users_info(users, info, week, end_block, max_weeks, decimals, do_upse
             'rewards_earned': rewards.getClaimableAt(user, week) / 10 ** reward_decimals,
             'ybs': ybs.address,
             'total_realized': realized,
-        })
+        }, do_upsert)
         print(f'User {user} @ week {week} successfully written.')
 
 
@@ -127,13 +127,6 @@ def update_current_week(token, info):
     if len(logs) > 0:
         insert_week_info(info, week, height, max_weeks, decimals, True)
         insert_users_info(users, info, week, height, max_weeks, decimals, True)
-
-def test():
-    ybs = Contract('0xF4C6e0E006F164535508787873d86b84fe901975')
-    map = build_global_stake_map(
-        ybs, 41, utilities.get_week_end_block(ybs.address, 41), 4, 18
-    )
-    print(map)
 
 def build_global_stake_map(ybs, week, block, max_weeks, decimals):
     pending_map = {}
