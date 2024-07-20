@@ -68,7 +68,7 @@ class UserInfo(Base):
     total_realized = Column(Numeric(30, 18))
     ybs = Column(String, primary_key=True)
     __table_args__ = (
-        UniqueConstraint('account', 'week_id', 'ybs', name='user_info_account_ybs_week_id_key'),
+        UniqueConstraint('account', 'ybs', 'week_id', name='user_info_account_ybs_week_id_key'),
     )
 
 # Define metadata
@@ -119,21 +119,7 @@ def insert_week_info(record, do_upsert):
     finally:
         # Close the session
         session.close()
-
-def test():
-    data = {
-        'account': '0xDcc5b9BA5aB98DC38477831Ff359d81f911423eb',
-        'ybs': '0xF4C6e0E006F164535508787873d86b84fe901975',
-        'week_id': 49,
-        'token': 'xyz',
-    }
-    insert_user_info(data, do_upsert=True)
-    data = {
-        'ybs': '0xF4C6e0E006F164535508787873d86b84fe901975',
-        'week_id': 49,
-        'token': 'xyz',
-    }
-    insert_week_info(data, do_upsert=True)
+        
 
 def insert_user_info(record, do_upsert=False):
     session = Session()
