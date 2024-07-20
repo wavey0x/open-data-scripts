@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Boolean, Numeric, JSON, select
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Boolean, Numeric, JSON, UniqueConstraint, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import insert
@@ -51,6 +51,9 @@ class WeekInfo(Base):
     end_block = Column(Integer)
     start_time_str = Column(String)
     end_time_str = Column(String)
+    __table_args__ = (
+        UniqueConstraint('week_id', 'ybs', name='week_info_ybs_week_id_key'),
+    )
 
 class UserInfo(Base):
     __tablename__ = 'user_info'
@@ -64,6 +67,9 @@ class UserInfo(Base):
     rewards_earned = Column(Numeric(30, 18))
     total_realized = Column(Numeric(30, 18))
     ybs = Column(String, primary_key=True)
+    __table_args__ = (
+        UniqueConstraint('account', 'week_id', 'ybs', name='user_info_account_ybs_week_id_key'),
+    )
 
 # Define metadata
 metadata = MetaData()
@@ -96,7 +102,7 @@ def insert_week_info(record, do_upsert):
     try:
         if do_upsert:
             stmt = insert(WeekInfo).values(**record).on_conflict_do_update(
-                index_elements=['week_info_ybs_week_id_key'],
+                index_elements=['week_id', 'ybs'],
                 set_={key: getattr(insert(WeekInfo).excluded, key) for key in record.keys()}
             )
             session.execute(stmt)
@@ -120,7 +126,7 @@ def insert_user_info(record, do_upsert=False):
     try:
         if do_upsert:
             stmt = insert(UserInfo).values(**record).on_conflict_do_update(
-                index_elements=['user_info_account_ybs_week_id_key'],  # Change this to your unique constraint column(s)
+                index_elements=['account', 'week_id', 'ybs'],  # Change this to your unique constraint column(s)
                 set_={key: getattr(insert(UserInfo).excluded, key) for key in record.keys()}
             )
             session.execute(stmt)
