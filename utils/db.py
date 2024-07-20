@@ -120,6 +120,21 @@ def insert_week_info(record, do_upsert):
         # Close the session
         session.close()
 
+def test():
+    data = {
+        'account': '0xDcc5b9BA5aB98DC38477831Ff359d81f911423eb',
+        'ybs': '0xF4C6e0E006F164535508787873d86b84fe901975',
+        'week_id': 49,
+        'token': 'xyz',
+    }
+    insert_user_info(data, do_upsert=True)
+    data = {
+        'ybs': '0xF4C6e0E006F164535508787873d86b84fe901975',
+        'week_id': 49,
+        'token': 'xyz',
+    }
+    insert_week_info(data, do_upsert=True)
+
 def insert_user_info(record, do_upsert=False):
     session = Session()
     
