@@ -48,7 +48,7 @@ def insert_week_info(
     end_block,
     max_weeks, 
     decimals,
-    do_upsert,
+    do_upsert=False,
 ):
     ybs = info['ybs']
     supply = ybs.totalSupply(block_identifier=end_block) / 10 ** decimals
@@ -73,7 +73,7 @@ def insert_week_info(
     }, do_upsert)
     print(f'Week {week} successfully written.')
 
-def insert_users_info(users, info, week, end_block, max_weeks, decimals):
+def insert_users_info(users, info, week, end_block, max_weeks, decimals, do_upsert=False):
     ybs = info['ybs']
     token = info['token']
     rewards = info['rewards']

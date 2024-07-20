@@ -94,7 +94,7 @@ def insert_week_info(record, do_upsert):
     session = Session()
     
     try:
-        if do_upsert
+        if do_upsert:
             stmt = insert(WeekInfo).values(**record).on_conflict_do_update(
                 index_elements=['id'],  # Change this to your unique constraint column(s)
                 set_={key: getattr(insert(WeekInfo).excluded, key) for key in record.keys()}
