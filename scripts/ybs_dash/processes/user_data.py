@@ -121,7 +121,6 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
                 'amount': 0,
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
-                'realized': realized,
             }
         if target_week <= week:
             realized += ybs.accountWeeklyToRealize(
@@ -135,8 +134,8 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
                 'amount': amt,
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
-                'realized': realized,
             }
+        pending_map[target_week]['realized'] = realized
 
     return pending_map, realized
 
