@@ -37,8 +37,8 @@ def fill_weeks(token, info):
             end_block = utilities.get_week_end_block(ybs.address, week)
         except:
             pass
-        insert_week_info(info, week, end_block, max_weeks, decimals)
-        insert_users_info(users, info, week, end_block, max_weeks, decimals)
+        insert_week_info(info, week, end_block, max_weeks, decimals, False)
+        insert_users_info(users, info, week, end_block, max_weeks, decimals, False)
 
     update_current_week(token, info)
 
@@ -47,7 +47,8 @@ def insert_week_info(
     week,
     end_block,
     max_weeks, 
-    decimals
+    decimals,
+    do_upsert,
 ):
     ybs = info['ybs']
     supply = ybs.totalSupply(block_identifier=end_block) / 10 ** decimals
@@ -69,7 +70,7 @@ def insert_week_info(
         'start_time_str': datetime.fromtimestamp(start_ts).strftime("%Y-%m-%d"),
         'end_time_str': datetime.fromtimestamp(end_ts).strftime("%Y-%m-%d"),
         'stake_map': stake_map
-    })
+    }, do_upsert)
     print(f'Week {week} successfully written.')
 
 def insert_users_info(users, info, week, end_block, max_weeks, decimals):
@@ -124,8 +125,8 @@ def update_current_week(token, info):
         users.add(log['args']['account'])
 
     if len(logs) > 0:
-        insert_week_info(info, week, height, max_weeks, decimals)
-        insert_users_info(users, info, week, height, max_weeks, decimals)
+        insert_week_info(info, week, height, max_weeks, decimals, True)
+        insert_users_info(users, info, week, height, max_weeks, decimals, True)
 
 def test():
     ybs = Contract('0xF4C6e0E006F164535508787873d86b84fe901975')

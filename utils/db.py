@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Boolean, Numeric, JSON, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.dialects.postgresql import insert
+
 from dotenv import load_dotenv
 import os
 
@@ -87,13 +89,20 @@ def test():
     print(accounts)
     assert False
 
-def insert_week_info(record):
+def insert_week_info(record, do_upsert):
     # Create a session
     session = Session()
     
     try:
-        week_info = WeekInfo(**record)
-        session.add(week_info)
+        if do_upsert
+            stmt = insert(WeekInfo).values(**record).on_conflict_do_update(
+                index_elements=['id'],  # Change this to your unique constraint column(s)
+                set_={key: getattr(insert(WeekInfo).excluded, key) for key in record.keys()}
+            )
+            session.execute(stmt)
+        else:
+            week_info = WeekInfo(**record)
+            session.add(week_info)
         
         # Commit the transaction
         session.commit()
@@ -105,12 +114,19 @@ def insert_week_info(record):
         # Close the session
         session.close()
 
-def insert_user_info(record):
+def insert_user_info(record, do_upsert=False):
     session = Session()
     
     try:
-        week_info = UserInfo(**record)
-        session.add(week_info)
+        if do_upsert:
+            stmt = insert(UserInfo).values(**record).on_conflict_do_update(
+                index_elements=['id'],  # Change this to your unique constraint column(s)
+                set_={key: getattr(insert(UserInfo).excluded, key) for key in record.keys()}
+            )
+            session.execute(stmt)
+        else:
+            week_info = UserInfo(**record)
+            session.add(week_info)
         
         # Commit the transaction
         session.commit()
