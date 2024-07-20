@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Numeric, JSON, select
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Boolean, Numeric, JSON, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
@@ -15,6 +15,23 @@ Base.metadata.create_all(engine)
 
 # Create a Session class
 Session = sessionmaker(bind=engine)
+
+class Stakes(Base):
+    __tablename__ = 'stakes'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ybs = Column(String)
+    is_stake = Column(Boolean)
+    account = Column(String)
+    amount = Column(Numeric(30, 18))
+    new_weight = Column(Numeric(30, 18))
+    net_weight_change = Column(Numeric(30, 18))
+    week = Column(Integer)
+    txn_hash = Column(String)
+    block = Column(Integer)
+    timestamp = Column(Integer)
+    date_str = Column(String)
+    token = Column(String)
 
 # Define the week_info table as a class
 class WeekInfo(Base):
@@ -105,6 +122,20 @@ def insert_user_info(record):
     finally:
         # Close the session
         session.close()
+
+def get_latest_stake_recorded_for_token(token):
+    session = Session()
+    # Query to find the highest week_id for the given token
+    highest_block = session.query(Stakes.block).\
+        filter(Stakes.token == token).\
+        order_by(Stakes.block.desc()).\
+        first()
+
+    # Check if we got a result
+    if highest_block:
+        return highest_block[0]  # highest_week_id is a tuple, so return the first element
+    else:
+        return None  # Return None if no rows were found
 
 def get_highest_week_id_for_token(token):
     session = Session()
