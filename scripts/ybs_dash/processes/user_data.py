@@ -111,25 +111,31 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
     bitstring = format(bitmap, '08b')[::-1][:-(max_weeks-1)]    # Reverse order and trim
     bitarray = [int(char) for char in bitstring]            # Convert to array
     # bitarray = shift_array(bitarray, week_offset) # Adjust for offset
-    realized = acct_data['realizedStake'] / 10 ** decimals
+    realized = acct_data['realizedStake'] * 2 / 10 ** decimals
     pending_map = {}
 
     for i, bit in enumerate(bitarray):
         target_week = week - week_offset + (len(bitarray) - 1 - i)
         if int(bit) != 1:
-            continue
+            pending_map[target_week] = {
+                'amount': 0,
+                'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
+                'max_weeks': max_weeks,
+                'realized': realized,
+            }
         if target_week <= week:
             realized += ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
-            )['weight'] / 10 ** decimals
+            )['weight'] * 2 / 10 ** decimals
         else:
             amt = ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
-            )['weight'] / 10 ** decimals
+            )['weight'] * 2 / 10 ** decimals
             pending_map[target_week] = {
-                'amount':amt,
+                'amount': amt,
                 'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
                 'max_weeks': max_weeks,
+                'realized': realized,
             }
 
     return pending_map, realized
