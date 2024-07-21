@@ -84,7 +84,7 @@ def insert_users_info(users, info, week, end_block, max_weeks, decimals, do_upse
             continue
         balance = ybs.balanceOf(user, block_identifier=end_block) / 1e18
         acct_data = ybs.accountData(user, block_identifier=end_block)    
-        stake_map, realized = build_user_stake_map(
+        stake_map = build_user_stake_map(
             ybs, user, acct_data, week, end_block, max_weeks, decimals
         )
 
@@ -98,7 +98,7 @@ def insert_users_info(users, info, week, end_block, max_weeks, decimals, do_upse
             'stake_map': stake_map,
             'rewards_earned': rewards.getClaimableAt(user, week) / 10 ** reward_decimals,
             'ybs': ybs.address,
-            'total_realized': realized,
+            'total_realized': stake_map['realized'],
         }, do_upsert)
         print(f'User {user} @ week {week} successfully written.')
 
@@ -144,7 +144,31 @@ def build_global_stake_map(ybs, week, block, max_weeks, decimals):
 
     return pending_map
 
+def test():
+    ybs = Contract('0xF4C6e0E006F164535508787873d86b84fe901975')
+    user = '0xA323CCcbCbaDe7806ca5bB9951bebD89A7882bf8'
+    week = 47
+
+    block = utilities.get_week_end_block(ybs.address, week)
+
+    acct_data = ybs.accountData(user, block_identifier=block)
+    
+    max_weeks = ybs.MAX_STAKE_GROWTH_WEEKS()
+    decimals = 18
+    
+
+    map = build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
+    balance = ybs.balanceOf(user, block_identifier=block) / 1e18
+
+    print(map)
+    print(balance)
+
+    assert False
+
 def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals):
+    """
+    Returns a dict where keys are the deposit week and 
+    """
     week_offset = week - acct_data['lastUpdateWeek']
     bitmap = acct_data['updateWeeksBitmap']
     bitstring = format(bitmap, '08b')[::-1][:-(max_weeks-1)]    # Reverse order and trim
@@ -155,12 +179,8 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
 
     for i, bit in enumerate(bitarray):
         target_week = week - week_offset + (len(bitarray) - 1 - i)
-        pending_map[target_week] = {
-            'amount': 0,
-            'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
-            'max_weeks': max_weeks,
-        }
-        if target_week <= week:
+        amt = 0
+        if target_week < week:
             realized += ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
             )['weight'] * 2 / 10 ** decimals
@@ -168,14 +188,14 @@ def build_user_stake_map(ybs, user, acct_data, week, block, max_weeks, decimals)
             amt = ybs.accountWeeklyToRealize(
                 user, target_week, block_identifier=block
             )['weight'] * 2 / 10 ** decimals
-            pending_map[target_week] = {
-                'amount': amt,
-                'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
-                'max_weeks': max_weeks,
-            }
-        pending_map[target_week]['realized'] = realized
+        pending_map[target_week] = {
+            'amount': amt,
+            'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
+            'max_weeks': max_weeks,
+        }
+        pending_map['realized'] = realized
 
-    return pending_map, realized
+    return pending_map
 
 def shift_array(arr, offset):
     length = len(arr)
