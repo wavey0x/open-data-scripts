@@ -550,7 +550,7 @@ def get_fee_distributions():
         amount = log_data.amount / 10 ** Contract(log_data.token).decimals()
         value = 0
         try:
-            value = amount * TOKEN_INFO[log_data.token]['price'] # * amount
+            value = amount #* TOKEN_INFO[log_data.token]['price'] # * amount
         except:
             value = 0
 
