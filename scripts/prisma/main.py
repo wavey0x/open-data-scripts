@@ -177,10 +177,9 @@ def stats():
             weekly_data_cache = last_run_data['liquid_lockers'][l]['weekly_data']
             boost_fees_cache = {item['week_number']: item['boost_fees_collected'] for item in weekly_data_cache}
         except:
-            print(f'Cannot parse past data.')
+            print(f'Cannot parse past data for week.')
         for target_week in range(EMISSIONS_START_WEEK, current_week + 1):
             week_data = {}
-            print(f'Week: {target_week}')
             start_block = utils.utils.get_week_start_block(token_locker.address, target_week)
             end_block = utils.utils.get_week_end_block(token_locker.address, week_number=target_week)
             start_amt = token_locker.getAccountWeightAt(account, target_week - 1)/52
