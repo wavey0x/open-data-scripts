@@ -56,6 +56,7 @@ def insert_week_info(
     start_ts = utilities.get_week_start_ts(ybs.address, week)
     end_ts = utilities.get_week_end_ts(ybs.address, week)
     stake_map = build_global_stake_map(ybs, week, end_block, max_weeks, decimals)
+    print(stake_map)
     db_utils.insert_week_info({
         'week_id': week,
         'token': info['token'].address,
@@ -128,19 +129,22 @@ def update_current_week(token, info):
         insert_week_info(info, week, height, max_weeks, decimals, True)
         insert_users_info(users, info, week, height, max_weeks, decimals, True)
 
+
 def build_global_stake_map(ybs, week, block, max_weeks, decimals):
     pending_map = {}
+    pending_map['realized'] = ybs.totalSupply() / 10 ** decimals
     for i in range(max_weeks):
         target_week = week + 1 + i
         amt = ybs.globalWeeklyToRealize(
             target_week, block_identifier=block
-        )['weight'] / 10 ** decimals
-        if amt > 0:
-            pending_map[target_week] = {
-                'amount': amt,
-                'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
-                'max_weeks': max_weeks,
-            }
+        )['weight'] * 2 / 10 ** decimals
+
+        pending_map[target_week] = {
+            'amount': amt,
+            'week_start_ts': utilities.get_week_start_ts(ybs.address, target_week),
+            'max_weeks': max_weeks
+        }
+        pending_map['realized'] -= amt
 
     return pending_map
 
