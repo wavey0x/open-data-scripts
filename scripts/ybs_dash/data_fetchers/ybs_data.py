@@ -10,7 +10,9 @@ def build_data(token, staker_data):
     ybs = staker_data['ybs']
     return { 
         'weekly_data': get_week_data(token, staker_data, height),
-        'ybs': ybs,
+        'ybs': staker_data['ybs'],
+        'rewards': staker_data['rewards'],
+        'utils': staker_data['utils'],
     }
 
 def get_week_data(token, staker_data, height):
