@@ -368,7 +368,7 @@ def cvxprisma_staking_apr(block=chain.height):
     # Query DefiLlama for all of our coin prices
     cvxprisma = stake_contract.cvxprisma()
     coins = ','.join(f'ethereum:{k}' for k in reward_tokens + [cvxprisma])
-    url = f'https://coins.llama.fi/prices/current/{coins}?searchWidth=4h'
+    url = f'https://coins.llama.fi/prices/current/{coins}?searchWidth=6h'
     response = requests.get(url).json()['coins']
     response = {key.replace('ethereum:', ''): value for key, value in response.items()}
     price_stake = response[cvxprisma]['price']
