@@ -19,7 +19,8 @@ class MarketData:
     collateral_token_symbol: str
     utilization: float
     liquidity: float
-    interest_rate: float
+    lend_rate: float
+    borrow_rate: float
     interest_rate_contract: str
     global_ltv: float
     total_debt: float
@@ -53,9 +54,9 @@ class MarketData:
             self.total_supplied = market.totalAssets() / 1e18
             self.utilization = self.total_debt / self.total_supplied
             oracle = Contract(controller.amm())
-            self.interest_rate = oracle.rate() * 356 * 86400 / 1e18
+            self.lend_rate = market.lend_apr() / 1e18
+            self.borrow_rate = oracle.rate() * 356 * 86400 / 1e18
             self.interest_rate_contract = oracle.address
-            
             collat_value = collat_token.balanceOf(oracle.address) / 10 ** self.collateral_token_decimals * oracle.price_oracle() / 1e18
             debt_value = controller.total_debt() / 1e18
             self.global_ltv = debt_value / collat_value
