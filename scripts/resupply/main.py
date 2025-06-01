@@ -22,6 +22,7 @@ class MarketData:
     interest_rate_contract: str
     global_ltv: float
     total_debt: float
+    total_supplied: float
 
     def to_json(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
@@ -47,8 +48,8 @@ class MarketData:
             controller = Contract(market.controller())
             self.total_debt = controller.total_debt() / 1e18
             self.liquidity = asset.balanceOf(controller.address) / 1e18
-            self.utilization = self.total_debt / (self.total_debt + self.liquidity)
-            
+            self.total_supplied = market.totalAssets() / 1e18
+            self.utilization = self.total_debt / self.total_supplied
             oracle = Contract(controller.amm())
             self.interest_rate = oracle.rate() * 356 * 86400 / 1e18
             self.interest_rate_contract = oracle.address
@@ -73,7 +74,8 @@ class MarketData:
             self.total_debt = market.totalBorrow()[0] / 1e18
             self.global_ltv = self.total_debt / collat_value
             self.liquidity = asset.balanceOf(market.address) / 1e18
-            self.utilization = self.total_debt / market.totalAssets() * 1e18
+            self.total_supplied = market.totalAssets() / 1e18
+            self.utilization = self.total_debt / self.total_supplied
             rate_info = market.currentRateInfo().dict()
             self.borrow_rate = rate_info['ratePerSec'] * 356 * 86400 / 1e18
             fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
