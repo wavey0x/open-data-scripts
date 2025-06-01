@@ -65,6 +65,8 @@ class MarketData:
             collat_token = Contract(self.collat_token)
             self.deposit_token = market.asset()
             asset = Contract(self.deposit_token)
+            self.deposit_token_symbol = asset.symbol()
+            self.collateral_token_symbol = collat_token.symbol()
             rate_info = market.exchangeRateInfo()
             oracle = Contract(rate_info['oracle'])
             price_data = oracle.getPrices().dict()
