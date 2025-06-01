@@ -21,6 +21,7 @@ class MarketData:
     interest_rate: float
     interest_rate_contract: str
     global_ltv: float
+    total_debt: float
 
     def to_json(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
@@ -44,9 +45,9 @@ class MarketData:
             self.collateral_token_symbol = collat_token.symbol()
             asset = Contract(self.deposit_token)
             controller = Contract(market.controller())
-            total_debt = controller.total_debt()
+            self.total_debt = controller.total_debt() / 1e18
             self.liquidity = asset.balanceOf(controller.address) / 1e18
-            self.utilization = total_debt / (total_debt + self.liquidity)
+            self.utilization = self.total_debt / (self.total_debt + self.liquidity)
             
             oracle = Contract(controller.amm())
             self.interest_rate = oracle.rate() * 356 * 86400 / 1e18
@@ -59,7 +60,6 @@ class MarketData:
         elif self.protocol_id == 1:
             self.market_name = 'FraxLend'
             market = Contract(self.market)
-            rate_contract = Contract(market.rateContract())
             self.collat_token = market.collateralContract()
             collat_token = Contract(self.collat_token)
             self.deposit_token = market.asset()
@@ -70,12 +70,15 @@ class MarketData:
             price = price_data['_priceLow'] if '_priceLow' in price_data else price_data['priceLow']
             price = 1e18 / price
             collat_value = market.totalCollateral() / 1e18 * price
-            total_borrow = market.totalBorrow()[0] / 1e18
-            self.global_ltv = total_borrow / collat_value
+            self.total_debt = market.totalBorrow()[0] / 1e18
+            self.global_ltv = self.total_debt / collat_value
             self.liquidity = asset.balanceOf(market.address) / 1e18
-            self.utilization = total_borrow / market.totalAssets() * 1e18
-            self.borrow_rate = market.currentRateInfo()['ratePerSec'] * 356 * 86400 / 1e18
-            self.lend_rate = self.borrow_rate 
+            self.utilization = self.total_debt / market.totalAssets() * 1e18
+            rate_info = market.currentRateInfo().dict()
+            self.borrow_rate = rate_info['ratePerSec'] * 356 * 86400 / 1e18
+            fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
+            self.lend_rate = self.borrow_rate * (1 - fee) * 1e18
+            self.interest_rate_contract = market.rateContract()
 
 def get_curvelend_market_data(market):
     collat_token = Contract(market.collateral_token())

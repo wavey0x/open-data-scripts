@@ -1,4 +1,3 @@
-from scripts.prisma import main as prisma_job
 from scripts.ybs_dash import main as ybs_job
 from scripts.resupply import main as resupply_job
 import os, subprocess, datetime
