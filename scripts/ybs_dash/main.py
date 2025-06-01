@@ -44,12 +44,15 @@ def main():
 def populate_staker_info():
     registry = Contract(YBS_REGISTRY)
     num_tokens = registry.numTokens()
-    
+    DEPRECATED_TOKENS = [
+        '0xe3668873D944E4A949DA05fc8bDE419eFF543882',
+    ]
     result = {}
     for i in range(num_tokens):
         token = registry.tokens(i)
+        if token in DEPRECATED_TOKENS:
+            continue
         deployment = registry.deployments(token)
-        
         data = {
             'token': Contract(token),
             'ybs': Contract(deployment['yearnBoostedStaker']),

@@ -22,19 +22,19 @@ TOKEN_INFO = {
     '0xdA47862a83dac0c112BA89c6abC2159b95afd71C': {
         'symbol':'PRISMA',
         'decimals':'18',
-        'price': utils.utils.get_prices(['0xdA47862a83dac0c112BA89c6abC2159b95afd71C'])['0xdA47862a83dac0c112BA89c6abC2159b95afd71C'],
+        'price': utils.utils.get_prices(['0xdA47862a83dac0c112BA89c6abC2159b95afd71C']).get('0xdA47862a83dac0c112BA89c6abC2159b95afd71C', 0),
         'token_logo_url': 'https://assets.coingecko.com/coins/images/31520/small/PRISMA_200.png?1696530330'
     },
     '0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28': {
         'symbol':'mkUSD',
         'decimals':'18',
-        'price': utils.utils.get_prices(['0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28'])['0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28'],
+        'price': utils.utils.get_prices(['0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28']).get('0x4591DBfF62656E7859Afe5e45f6f47D3669fBB28', 0),
         'token_logo_url': 'https://assets.coingecko.com/coins/images/31519/standard/mkUSD_200.png'
     },
     '0x35282d87011f87508D457F08252Bc5bFa52E10A0': {
         'symbol':'ULTRA',
         'decimals':'18',
-        'price': utils.utils.get_prices(['0x35282d87011f87508D457F08252Bc5bFa52E10A0'])['0x35282d87011f87508D457F08252Bc5bFa52E10A0'],
+        'price': utils.utils.get_prices(['0x35282d87011f87508D457F08252Bc5bFa52E10A0']).get('0x35282d87011f87508D457F08252Bc5bFa52E10A0', 0),
         'token_logo_url': 'https://assets.coingecko.com/coins/images/35315/standard/ultra-logo.png'
     },
 }

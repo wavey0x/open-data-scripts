@@ -5,10 +5,17 @@ def build_data(token, staker_data):
     decimals = staker_data['decimals']
     is_v2, vault = lookup_autocompounder(token)
     strategy = lookup_strategy(vault, is_v2)
-    reward_token, unsold_rewards = fetch_unsold_rewards(strategy)
-    reward_token_decimals = reward_token.decimals()
-    profit_release_data = get_profit_release_data(vault, is_v2, decimals)
-    swap_thresholds = strategy.swapThresholds()
+    reward_token_decimals = 18
+    reward_token = ZERO_ADDRESS
+    if strategy != ZERO_ADDRESS:
+        strategy = interface.IYBSStrategy(strategy)
+        reward_token, unsold_rewards = fetch_unsold_rewards(strategy)
+        swap_thresholds = strategy.swapThresholds()
+        reward_token_decimals = reward_token.decimals()
+        profit_release_data = get_profit_release_data(vault, is_v2, decimals)
+        trigger = strategy.harvestTrigger(0) if is_v2 else strategy.reportTrigger(strategy.address)[0]
+    else:
+        trigger = 0
     return {
         'is_v2': is_v2,
         'autocompounder': vault,
@@ -24,7 +31,7 @@ def build_data(token, staker_data):
         'price_per_share_autocompounder': vault.pricePerShare() / 10 ** decimals,
         'price_per_share_reward_token': reward_token.pricePerShare() / 10 ** reward_token_decimals,
         'claimable_rewards': staker_data['rewards'].getClaimable(strategy) / 10 ** reward_token_decimals,
-        'harvest_trigger': strategy.harvestTrigger(0) if is_v2 else strategy.reportTrigger(strategy.address)[0],
+        'harvest_trigger': trigger,
         'credit': Contract(token).balanceOf(vault) / 10 ** decimals,
     }
 
@@ -61,7 +68,7 @@ def lookup_strategy(vault, is_v2):
         if current_debt > dr:
             strategy = s
             dr = current_debt
-    return interface.IYBSStrategy(strategy)
+    return strategy
 
 def get_profit_release_data(vault, is_v2, decimals):
     """

@@ -1,0 +1,8 @@
+sqlalchemy
+brownie
+pandas
+duckdb
+multicall
+dotenv
+joblib
+psycopg2-binary
