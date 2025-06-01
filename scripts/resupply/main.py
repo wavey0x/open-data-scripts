@@ -1,4 +1,4 @@
-from brownie import Contract, chain
+from brownie import Contract, chain, ZERO_ADDRESS
 import json
 import os
 import time
@@ -25,6 +25,8 @@ class MarketData:
     global_ltv: float
     total_debt: float
     total_supplied: float
+    controller: str
+    resupply_borrow_limit: float
 
     def to_json(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
@@ -32,6 +34,7 @@ class MarketData:
     def __init__(self, pair):
         self.pair = pair
         pair = Contract(pair)
+        self.resupply_borrow_limit = pair.borrowLimit() / 1e18
         self.name = pair.name()
         print(f'Processing pair: {self.name} {pair.address}')
         self.market = pair.collateral()
@@ -49,6 +52,7 @@ class MarketData:
             self.collateral_token_symbol = collat_token.symbol()
             asset = Contract(self.deposit_token)
             controller = Contract(market.controller())
+            self.controller = controller.address
             self.total_debt = controller.total_debt() / 1e18
             self.liquidity = asset.balanceOf(controller.address) / 1e18
             self.total_supplied = market.totalAssets() / 1e18
@@ -85,28 +89,9 @@ class MarketData:
             rate_info = market.currentRateInfo().dict()
             self.borrow_rate = rate_info['ratePerSec'] * 356 * 86400 / 1e18
             fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
-            self.lend_rate = self.borrow_rate * (1 - fee) * 1e18
+            self.lend_rate = self.borrow_rate * (1 - fee)
             self.interest_rate_contract = market.rateContract()
-
-def get_curvelend_market_data(market):
-    collat_token = Contract(market.collateral_token())
-    market = Contract(market)
-    asset = Contract(market.asset())
-    controller = Contract(market.controller())
-    total_debt = controller.total_debt()
-    liquidity = asset.balanceOf(controller.address)
-    utilization = total_debt / (total_debt + liquidity)
-    oracle = Contract(controller.amm())
-    borrow_rate = oracle.rate() * 356 * 86400 / 1e18
-    lending_rate = market.lend_apr() / 1e18
-    collat_value = collat_token.balanceOf(oracle.address) * oracle.price_oracle()
-    debt_value = controller.total_debt()
-    global_ltv = debt_value / collat_value
-    return 0
-
-def get_fraxlend_market_data(market): 
-    market = Contract(market)
-    return 0
+            self.controller = "0x0000000000000000000000000000000000000000"
 
 def get_resupply_pairs_and_collaterals():
     pairs = registry.getAllPairAddresses()
@@ -121,16 +106,24 @@ def stringify_dicts(data):
         return {key: stringify_dicts(value) for key, value in data.items()}
     elif isinstance(data, list):
         return [stringify_dicts(item) for item in data]
-    elif isinstance(data, Contract):
-        return data.address
     return data
 
 def save_data_as_json(data):
     json_file_path = get_json_path(RESUPPLY_JSON_FILE)
     os.makedirs(os.path.dirname(json_file_path), exist_ok=True)
     
+    # Remove None values from the data
+    def remove_none_values(d):
+        if isinstance(d, dict):
+            return {k: remove_none_values(v) for k, v in d.items() if v is not None}
+        elif isinstance(d, list):
+            return [remove_none_values(v) for v in d if v is not None]
+        return d
+    
+    cleaned_data = remove_none_values(data)
+    
     with open(json_file_path, 'w') as file:
-        json.dump(data, file, indent=4)
+        json.dump(cleaned_data, file, indent=4)
 
 def main():
     # Get market data
