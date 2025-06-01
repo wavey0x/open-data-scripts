@@ -13,6 +13,7 @@ class MarketData:
     collat_token: str
     deposit_token: str
     deposit_token_logo: str
+    collateral_token_decimals: int
     collateral_token_logo: str
     deposit_token_symbol: str
     collateral_token_symbol: str
@@ -40,6 +41,7 @@ class MarketData:
             market = Contract(self.market)
             self.collat_token = market.collateral_token()
             collat_token = Contract(self.collat_token)
+            self.collateral_token_decimals = collat_token.decimals()
             self.deposit_token = market.asset()
             deposit_token = Contract(self.deposit_token)
             self.deposit_token_symbol = deposit_token.symbol()
@@ -54,7 +56,7 @@ class MarketData:
             self.interest_rate = oracle.rate() * 356 * 86400 / 1e18
             self.interest_rate_contract = oracle.address
             
-            collat_value = collat_token.balanceOf(oracle.address) * oracle.price_oracle() / 1e36
+            collat_value = collat_token.balanceOf(oracle.address) / 10 ** self.collateral_token_decimals * oracle.price_oracle() / 1e18
             debt_value = controller.total_debt() / 1e18
             self.global_ltv = debt_value / collat_value
             
@@ -67,12 +69,13 @@ class MarketData:
             asset = Contract(self.deposit_token)
             self.deposit_token_symbol = asset.symbol()
             self.collateral_token_symbol = collat_token.symbol()
+            self.collateral_token_decimals = collat_token.decimals()
             rate_info = market.exchangeRateInfo()
             oracle = Contract(rate_info['oracle'])
             price_data = oracle.getPrices().dict()
             price = price_data['_priceLow'] if '_priceLow' in price_data else price_data['priceLow']
             price = 1e18 / price
-            collat_value = market.totalCollateral() / 1e18 * price
+            collat_value = market.totalCollateral() / 10 ** self.collateral_token_decimals * price
             self.total_debt = market.totalBorrow()[0] / 1e18
             self.global_ltv = self.total_debt / collat_value
             self.liquidity = asset.balanceOf(market.address) / 1e18
