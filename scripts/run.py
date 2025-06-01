@@ -1,19 +1,26 @@
 from scripts.prisma import main as prisma_job
 from scripts.ybs_dash import main as ybs_job
+from scripts.resupply import main as resupply_job
 import os, subprocess, datetime
 import shutil
+from config import (
+    YBS_JSON_FILE,
+    RESUPPLY_JSON_FILE,
+    RAW_BOOST_JSON_FILE,
+    get_json_path
+)
 
 def main():
+    resupply_job.main()
     ybs_job.main()
-    prisma_job.main()
 
     destination_dir = '../open-data/'
     os.makedirs(destination_dir, exist_ok=True)
 
     source_files = [
-        './data/ybs_data.json', 
-        './data/prisma_liquid_locker_data.json',
-        './data/raw_boost_data.json',
+        get_json_path(YBS_JSON_FILE),
+        get_json_path(RAW_BOOST_JSON_FILE),
+        get_json_path(RESUPPLY_JSON_FILE),
     ]
     for file in source_files:
         shutil.copy(file, destination_dir)

@@ -1,9 +1,11 @@
-from brownie import Contract
+from brownie import Contract, chain
 import json
 import os
+import time
+from config import RESUPPLY_JSON_FILE, RESUPPLY_REGISTRY, RESUPPLY_DEPLOYER, get_json_path
 
-registry = Contract("0x10101010E0C3171D894B71B3400668aF311e7D94")
-deployer = Contract("0x5555555524De7C56C1B20128dbEAace47d2C0417")
+registry = Contract(RESUPPLY_REGISTRY)
+deployer = Contract(RESUPPLY_DEPLOYER)
 
 class MarketData:
     pair: str
@@ -16,10 +18,9 @@ class MarketData:
     collateral_token_symbol: str
     utilization: float
     liquidity: float
+    interest_rate: float
     interest_rate_contract: str
     global_ltv: float
-    borrow_rate: float
-    lend_rate: float
 
     def to_json(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
@@ -28,6 +29,7 @@ class MarketData:
         self.pair = pair
         pair = Contract(pair)
         self.name = pair.name()
+        print(f'Processing pair: {self.name} {pair.address}')
         self.market = pair.collateral()
         market = Contract(self.market)
         self.protocol_id = 0 if hasattr(market, 'collateral_token') else 1
@@ -47,8 +49,7 @@ class MarketData:
             self.utilization = total_debt / (total_debt + self.liquidity)
             
             oracle = Contract(controller.amm())
-            self.borrow_rate = oracle.rate() * 356 * 86400 / 1e18
-            self.lend_rate = market.lend_apr() / 1e18
+            self.interest_rate = oracle.rate() * 356 * 86400 / 1e18
             self.interest_rate_contract = oracle.address
             
             collat_value = collat_token.balanceOf(oracle.address) * oracle.price_oracle() / 1e36
@@ -58,7 +59,7 @@ class MarketData:
         elif self.protocol_id == 1:
             self.market_name = 'FraxLend'
             market = Contract(self.market)
-            self.interest_rate_contract = Contract(market.rateContract())
+            rate_contract = Contract(market.rateContract())
             self.collat_token = market.collateralContract()
             collat_token = Contract(self.collat_token)
             self.deposit_token = market.asset()
@@ -72,11 +73,9 @@ class MarketData:
             total_borrow = market.totalBorrow()[0] / 1e18
             self.global_ltv = total_borrow / collat_value
             self.liquidity = asset.balanceOf(market.address) / 1e18
-            self.utilization = total_borrow / market.totalAssets() / 1e18
-            rate_info = market.currentRateInfo().dict()
-            self.borrow_rate = rate_info['ratePerSec'] * 356 * 86400 / 1e18
-            fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
-            self.lend_rate = self.borrow_rate * (1 - fee)
+            self.utilization = total_borrow / market.totalAssets() * 1e18
+            self.borrow_rate = market.currentRateInfo()['ratePerSec'] * 356 * 86400 / 1e18
+            self.lend_rate = self.borrow_rate 
 
 def get_curvelend_market_data(market):
     collat_token = Contract(market.collateral_token())
@@ -106,16 +105,39 @@ def get_resupply_pairs_and_collaterals():
         market_data.append(data.to_json())
     return market_data
 
-def main():
-    # Create data directory if it doesn't exist
-    os.makedirs('./data', exist_ok=True)
+def stringify_dicts(data):
+    if isinstance(data, dict):
+        return {key: stringify_dicts(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [stringify_dicts(item) for item in data]
+    elif isinstance(data, Contract):
+        return data.address
+    return data
+
+def save_data_as_json(data):
+    json_file_path = get_json_path(RESUPPLY_JSON_FILE)
+    os.makedirs(os.path.dirname(json_file_path), exist_ok=True)
     
+    with open(json_file_path, 'w') as file:
+        json.dump(data, file, indent=4)
+
+def main():
     # Get market data
     market_data = get_resupply_pairs_and_collaterals()
     
-    # Save to JSON file
-    with open('./data/resupply_market_data.json', 'w') as f:
-        json.dump(market_data, f, indent=2)
+    # Add metadata
+    current_time = int(time.time())
+    current_height = chain.height
+    
+    data = {
+        'data': market_data,
+        'last_update': current_time,
+        'last_update_block': current_height,
+    }
+    
+    # Stringify any Contract objects and save
+    data_str = stringify_dicts(data)
+    save_data_as_json(data_str)
     
     print("Resupply market data saved successfully.")
 

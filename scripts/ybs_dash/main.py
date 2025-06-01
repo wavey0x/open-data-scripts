@@ -4,7 +4,7 @@ import json
 from brownie import Contract, chain
 from dotenv import load_dotenv
 from utils import utils as utilities
-from constants import YBS_REGISTRY
+from config import YBS_REGISTRY, YBS_JSON_FILE, get_json_path
 from scripts.ybs_dash.data_fetchers import (
     peg_data, 
     strategy_data,
@@ -88,9 +88,8 @@ def stringify_dicts(data):
     return data
 
 def save_data_as_json(data):
-    project_directory = os.getenv('PROJECT_DIRECTORY')
-    json_filename = os.getenv('YBS_JSON_FILE')
-    json_file_path = os.path.join(project_directory, json_filename)
+    json_file_path = get_json_path(YBS_JSON_FILE)
+    os.makedirs(os.path.dirname(json_file_path), exist_ok=True)
     
     with open(json_file_path, 'w') as file:
         json.dump(data, file, indent=4)
