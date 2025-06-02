@@ -93,7 +93,7 @@ class MarketData:
             self.total_supplied = market.totalAssets() / 1e18
             self.utilization = self.total_debt / self.total_supplied
             rate_info = market.previewAddInterest()['_newCurrentRateInfo'].dict()
-            self.borrow_rate = rate_info['ratePerSec'] * 356 * 86400 / 1e18
+            self.borrow_rate = rate_info['ratePerSec'] * 365 * 86400 / 1e18
             fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
             self.lend_rate = self.borrow_rate * (1 - fee) * self.utilization 
             self.interest_rate_contract = market.rateContract()
