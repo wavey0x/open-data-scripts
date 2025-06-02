@@ -92,10 +92,10 @@ class MarketData:
             self.liquidity = asset.balanceOf(market.address) / 1e18
             self.total_supplied = market.totalAssets() / 1e18
             self.utilization = self.total_debt / self.total_supplied
-            rate_info = market.currentRateInfo().dict()
+            rate_info = market.previewAddInterest()['_newCurrentRateInfo'].dict()
             self.borrow_rate = rate_info['ratePerSec'] * 356 * 86400 / 1e18
             fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
-            self.lend_rate = self.borrow_rate * (1 - fee)
+            self.lend_rate = self.borrow_rate * (1 - fee) * self.utilization 
             self.interest_rate_contract = market.rateContract()
             self.controller = "0x0000000000000000000000000000000000000000"
             self.deposit_token_logo = get_token_logo_url(self.deposit_token)
