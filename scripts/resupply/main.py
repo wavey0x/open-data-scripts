@@ -85,7 +85,7 @@ class MarketData:
             oracle = Contract(rate_info['oracle'])
             price_data = oracle.getPrices().dict()
             price = price_data['_priceLow'] if '_priceLow' in price_data else price_data['priceLow']
-            price = 1e18 / price
+            price = 10 ** self.collateral_token_decimals / price
             collat_value = market.totalCollateral() / 10 ** self.collateral_token_decimals * price
             self.total_debt = market.totalBorrow()[0] / 1e18
             self.global_ltv = self.total_debt / collat_value
