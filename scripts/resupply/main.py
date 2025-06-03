@@ -2,11 +2,14 @@ from brownie import Contract, chain, ZERO_ADDRESS
 import json
 import os
 import time
-from config import RESUPPLY_JSON_FILE, RESUPPLY_REGISTRY, RESUPPLY_DEPLOYER, get_json_path
+from config import RESUPPLY_JSON_FILE, RESUPPLY_REGISTRY, RESUPPLY_DEPLOYER, GOV_TOKEN, RESUPPLY_UTILS, get_json_path
 import requests
+from utils.utils import get_prices
 
 registry = Contract(RESUPPLY_REGISTRY)
 deployer = Contract(RESUPPLY_DEPLOYER)
+utils = Contract(RESUPPLY_UTILS)
+rsup_price = 0
 
 # Global cache for CoinGecko tokens
 COINGECKO_TOKENS = None
@@ -31,6 +34,12 @@ class MarketData:
     total_supplied: float
     controller: str
     resupply_borrow_limit: float
+    resupply_total_debt: float
+    resupply_utilization: float
+    resupply_available_liquidity: float
+    resupply_borrow_rate: float
+    resupply_ltv: float
+    resupply_rewards_rate: float
 
     def to_json(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
@@ -38,12 +47,37 @@ class MarketData:
     def __init__(self, pair):
         self.pair = pair
         pair = Contract(pair)
-        self.resupply_borrow_limit = pair.borrowLimit() / 1e18
+        
         self.name = pair.name()
         print(f'Processing pair: {self.name} {pair.address}')
         self.market = pair.collateral()
         market = Contract(self.market)
         self.protocol_id = 0 if hasattr(market, 'collateral_token') else 1
+        self.resupply_available_liquidity = pair.totalDebtAvailable() / 1e18
+        borrow = pair.totalBorrow()
+        self.resupply_total_debt = borrow[0] / 1e18
+        self.resupply_borrow_limit = pair.borrowLimit() / 1e18
+        self.resupply_utilization = 0
+        if self.resupply_borrow_limit > 0:
+            self.resupply_utilization = self.resupply_total_debt / self.resupply_borrow_limit
+        rate_info = pair.previewAddInterest()['_newCurrentRateInfo'].dict()
+        self.resupply_borrow_rate = rate_info['ratePerSec'] * 365 * 86400 / 1e18
+        self.resupply_total_collateral = pair.totalCollateral() / 1e18
+        oracle = pair.exchangeRateInfo()['oracle']
+        price = Contract(oracle).getPrices(self.market) / 1e18
+        self.resupply_pps = price
+        self.resupply_total_supplied = self.resupply_total_collateral * price
+        if self.protocol_id == 0:
+            self.resupply_total_collateral /= 1_000
+        self.resupply_ltv = 0
+        if self.resupply_total_supplied > 0:
+            self.resupply_ltv = self.resupply_total_debt / self.resupply_total_supplied
+        _, rates = utils.getPairRsupRate(pair.address)
+        self.resupply_lend_rate = 0
+        if borrow[1] > 0 and borrow[0] > 0:
+            price_of_deposit = borrow[0] / borrow[1]
+            self.resupply_lend_rate = utils.apr(rates[0] / 1e36, rsup_price * 1e18, price_of_deposit * 1e18) / 1e18
+        
         if self.protocol_id == 0:
             self.market_name = 'CurveLend'
             market = Contract(self.market)
@@ -102,6 +136,8 @@ class MarketData:
             self.collateral_token_logo = get_token_logo_url(self.collat_token)
 
 def get_resupply_pairs_and_collaterals():
+    global rsup_price 
+    rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
     pairs = registry.getAllPairAddresses()
     market_data = []
     for pair in pairs:
