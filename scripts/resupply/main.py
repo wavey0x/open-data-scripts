@@ -94,7 +94,9 @@ class MarketData:
             self.total_debt = controller.total_debt() / 1e18
             self.liquidity = asset.balanceOf(controller.address) / 1e18
             self.total_supplied = market.totalAssets() / 1e18
-            self.utilization = self.total_debt / self.total_supplied
+            self.utilization = 0
+            if self.total_supplied > 0:
+                self.utilization = self.total_debt / self.total_supplied
             oracle = Contract(controller.amm())
             self.lend_rate = market.lend_apr() / 1e18
             self.borrow_rate = oracle.rate() * 356 * 86400 / 1e18
@@ -125,7 +127,9 @@ class MarketData:
             self.global_ltv = self.total_debt / collat_value
             self.liquidity = asset.balanceOf(market.address) / 1e18
             self.total_supplied = market.totalAssets() / 1e18
-            self.utilization = self.total_debt / self.total_supplied
+            self.utilization = 0
+            if self.total_supplied > 0:
+                self.utilization = self.total_debt / self.total_supplied
             rate_info = market.previewAddInterest()['_newCurrentRateInfo'].dict()
             self.borrow_rate = rate_info['ratePerSec'] * 365 * 86400 / 1e18
             fee = rate_info['feeToProtocolRate'] / market.FEE_PRECISION()
