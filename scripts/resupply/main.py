@@ -103,7 +103,9 @@ class MarketData:
             self.interest_rate_contract = oracle.address
             collat_value = collat_token.balanceOf(oracle.address) / 10 ** self.collateral_token_decimals * oracle.price_oracle() / 1e18
             debt_value = controller.total_debt() / 1e18
-            self.global_ltv = debt_value / collat_value
+            self.global_ltv = 0
+            if collat_value > 0:
+                self.global_ltv = debt_value / collat_value
             self.deposit_token_logo = get_token_logo_url(self.deposit_token)
             self.collateral_token_logo = get_token_logo_url(self.collat_token)
             
