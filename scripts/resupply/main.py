@@ -232,6 +232,63 @@ def get_token_logo_url(token_address):
         
     return None
 
+def get_retention_pool_data():
+    WEEK = 7 * 24 * 60 * 60
+    remaining_rsup = 2_500_000
+    rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
+    time_remaining = 52 * WEEK
+    
+    # Load retention snapshot data
+    snapshot_path = os.path.join(os.path.dirname(__file__), 'ip_retention_snapshot.json')
+    with open(snapshot_path, 'r') as f:
+        snapshot_data = json.load(f)
+    
+    # Calculate total supply original (sum of all original balances)
+    total_supply_original = sum(snapshot_data.values()) / 1e18
+    
+    # TODO: Need retention contract address to get current balances
+    # For now, we'll use the original balances as a placeholder
+    # retention_contract = Contract("RETENTION_CONTRACT_ADDRESS")
+    # total_supply_remaining = 0
+    # remaining_users = []
+    # for user, original_balance in snapshot_data.items():
+    #     current_balance = retention_contract.balanceOf(user) / 1e18
+    #     if current_balance > 0:
+    #         remaining_users.append({
+    #             'address': user,
+    #             'original_balance': original_balance / 1e18,
+    #             'current_balance': current_balance
+    #         })
+    #         total_supply_remaining += current_balance
+    
+    # Placeholder values until retention contract address is provided
+    total_supply_remaining = total_supply_original  # Assuming no withdrawals for now
+    remaining_users = [
+        {
+            'address': user,
+            'original_balance': balance / 1e18,
+            'current_balance': balance / 1e18
+        }
+        for user, balance in snapshot_data.items()
+    ]
+    
+    apr = 0
+    total_supply_remaining = total_supply_original - 13332798
+    if total_supply_remaining > 0:
+        apr = (remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
+    
+    data = {
+        'remaining_rsup': remaining_rsup,
+        'rsup_price': rsup_price,
+        'time_remaining': time_remaining,
+        'apr': apr,
+        'remaining_users': remaining_users,
+        'total_supply_remaining': total_supply_remaining,
+        'total_supply_original': total_supply_original
+    }
+    print(data)
+    return data
+
 def main():
     # Initialize CoinGecko tokens cache
     get_coingecko_tokens()
@@ -239,12 +296,16 @@ def main():
     # Get market data
     market_data = get_resupply_pairs_and_collaterals()
     
+    # Get retention pool data
+    retention_data = get_retention_pool_data()
+    
     # Add metadata
     current_time = int(time.time())
     current_height = chain.height
     
     data = {
         'data': market_data,
+        'retention_program': retention_data,
         'last_update': current_time,
         'last_update_block': current_height,
     }
