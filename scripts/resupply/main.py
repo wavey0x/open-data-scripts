@@ -293,7 +293,6 @@ def get_retention_program_data(current_height):
         'rsup_price': rsup_price,
         'time_remaining': time_remaining,
         'apr': apr,
-        'remaining_users': remaining_users,
         'total_supply_remaining': total_supply_remaining,
         'total_supply_original': total_supply_original,
         'withdrawal_feed': build_withdrawal_feed(current_height)
