@@ -1,8 +1,16 @@
-from brownie import Contract, chain, ZERO_ADDRESS
+from brownie import Contract, chain, ZERO_ADDRESS, interface
 import json
 import os
 import time
-from config import RESUPPLY_JSON_FILE, RESUPPLY_REGISTRY, RESUPPLY_DEPLOYER, GOV_TOKEN, RESUPPLY_UTILS, get_json_path
+from config import (
+    RESUPPLY_JSON_FILE,
+    RESUPPLY_REGISTRY,
+    RESUPPLY_DEPLOYER,
+    GOV_TOKEN,
+    RESUPPLY_UTILS,
+    get_json_path,
+    INSURANCE_POOL,
+)
 import requests
 from utils.utils import get_prices
 
@@ -232,16 +240,19 @@ def get_token_logo_url(token_address):
         
     return None
 
-def get_retention_pool_data():
+def load_retention_snapshot_data():
+    snapshot_path = os.path.join(os.path.dirname(__file__), 'data/ip_retention_snapshot.json')
+    with open(snapshot_path, 'r') as f:
+        snapshot_data = json.load(f)
+    return snapshot_data
+
+def get_retention_program_data(current_height):
     WEEK = 7 * 24 * 60 * 60
     remaining_rsup = 2_500_000
     rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
     time_remaining = 52 * WEEK
     
-    # Load retention snapshot data
-    snapshot_path = os.path.join(os.path.dirname(__file__), 'ip_retention_snapshot.json')
-    with open(snapshot_path, 'r') as f:
-        snapshot_data = json.load(f)
+    snapshot_data = load_retention_snapshot_data()
     
     # Calculate total supply original (sum of all original balances)
     total_supply_original = sum(snapshot_data.values()) / 1e18
@@ -284,10 +295,88 @@ def get_retention_pool_data():
         'apr': apr,
         'remaining_users': remaining_users,
         'total_supply_remaining': total_supply_remaining,
-        'total_supply_original': total_supply_original
+        'total_supply_original': total_supply_original,
+        'withdrawal_feed': build_withdrawal_feed(current_height)
     }
-    print(data)
     return data
+
+def build_withdrawal_feed(current_height):
+    if not isinstance(current_height, int):
+        current_height = 0
+    
+    SNAPSHOT_BLOCK = 22830880
+    FEED_CACHE_FILE = 'withdrawal_feed_cache.json'
+    
+    # Use /data directory at root of project
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    feed_cache_path = os.path.join(project_root, 'data', FEED_CACHE_FILE)
+    
+    # Load existing feed cache
+    cached_feed = []
+    last_processed_block = SNAPSHOT_BLOCK
+    
+    if os.path.exists(feed_cache_path):
+        try:
+            with open(feed_cache_path, 'r') as f:
+                cache_data = json.load(f)
+                cached_feed = cache_data.get('feed', [])
+                last_processed_block = cache_data.get('last_processed_block', SNAPSHOT_BLOCK)
+        except (json.JSONDecodeError, FileNotFoundError):
+            current_height = 0
+    else:
+        current_height = 0
+    
+    # Get current height if not provided
+    if not current_height:
+        current_height = chain.height
+    
+    # Get new events since last processed block
+    new_feed_entries = []
+    if last_processed_block < current_height:
+        ip = Contract(INSURANCE_POOL)
+        snapshot_data = load_retention_snapshot_data()
+        
+        logs = ip.events.Withdraw.get_logs(fromBlock=last_processed_block + 1, toBlock=current_height)
+        for log in logs:
+            if log.args['owner'] in snapshot_data:
+                new_feed_entries.append({
+                    'user': log.args['owner'],
+                    'amount': log.args['assets'] / 1e18,
+                    'shares': log.args['shares'] / 1e18,
+                    'timestamp': chain[log.blockNumber].timestamp,
+                    'txn_hash': log.transactionHash.hex(),
+                    'ts': log.blockNumber
+                })
+    
+    # Create a set of existing entries to avoid duplicates
+    existing_entries = set()
+    for entry in cached_feed:
+        duplicate_key = (entry['txn_hash'], entry['user'], entry['amount'])
+        existing_entries.add(duplicate_key)
+    
+    # Only add truly new entries
+    truly_new_entries = []
+    for entry in new_feed_entries:
+        duplicate_key = (entry['txn_hash'], entry['user'], entry['amount'])
+        if duplicate_key not in existing_entries:
+            truly_new_entries.append(entry)
+    
+    # Combine cached and new entries, sort by newest first
+    complete_feed = cached_feed + truly_new_entries
+    complete_feed.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    # Save updated cache
+    cache_data = {
+        'feed': complete_feed,
+        'last_processed_block': current_height
+    }
+    
+    os.makedirs(os.path.dirname(feed_cache_path), exist_ok=True)
+    with open(feed_cache_path, 'w') as f:
+        json.dump(cache_data, f, indent=4)
+    
+    print(f"Withdrawal feed: {len(complete_feed)} total entries, {len(truly_new_entries)} new entries")
+    return complete_feed
 
 def main():
     # Initialize CoinGecko tokens cache
@@ -296,12 +385,13 @@ def main():
     # Get market data
     market_data = get_resupply_pairs_and_collaterals()
     
-    # Get retention pool data
-    retention_data = get_retention_pool_data()
+    # Get Retention Program data
+    current_height = chain.height
+    retention_data = get_retention_program_data(current_height)
     
     # Add metadata
     current_time = int(time.time())
-    current_height = chain.height
+    
     
     data = {
         'data': market_data,

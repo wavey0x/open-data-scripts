@@ -19,5 +19,5 @@ scripts/private_queries.py
 .vscode
 cache
 scripts/charts.py
-data
+/data
 ybs_data.json
