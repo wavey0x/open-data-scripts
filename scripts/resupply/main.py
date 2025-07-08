@@ -10,6 +10,7 @@ from config import (
     RESUPPLY_UTILS,
     get_json_path,
     INSURANCE_POOL,
+    RETENTION_PROGRAM,
 )
 import requests
 from utils.utils import get_prices
@@ -259,8 +260,8 @@ def get_retention_program_data(current_height):
     
     # TODO: Need retention contract address to get current balances
     # For now, we'll use the original balances as a placeholder
-    # retention_contract = Contract("RETENTION_CONTRACT_ADDRESS")
-    # total_supply_remaining = 0
+    retention_contract = Contract(RETENTION_PROGRAM)
+    total_supply_remaining = retention_contract.totalSupply() / 1e18
     # remaining_users = []
     # for user, original_balance in snapshot_data.items():
     #     current_balance = retention_contract.balanceOf(user) / 1e18
@@ -270,21 +271,8 @@ def get_retention_program_data(current_height):
     #             'original_balance': original_balance / 1e18,
     #             'current_balance': current_balance
     #         })
-    #         total_supply_remaining += current_balance
-    
-    # Placeholder values until retention contract address is provided
-    total_supply_remaining = total_supply_original  # Assuming no withdrawals for now
-    remaining_users = [
-        {
-            'address': user,
-            'original_balance': balance / 1e18,
-            'current_balance': balance / 1e18
-        }
-        for user, balance in snapshot_data.items()
-    ]
     
     apr = 0
-    total_supply_remaining = total_supply_original - 13332798
     if total_supply_remaining > 0:
         apr = (remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
     
