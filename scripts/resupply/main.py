@@ -7,6 +7,7 @@ from config import (
     RESUPPLY_REGISTRY,
     RESUPPLY_DEPLOYER,
     GOV_TOKEN,
+    STABLECOIN,
     RESUPPLY_UTILS,
     get_json_path,
     INSURANCE_POOL,
@@ -250,7 +251,9 @@ def load_retention_snapshot_data():
 def get_retention_program_data(current_height):
     WEEK = 7 * 24 * 60 * 60
     remaining_rsup = 2_500_000
-    rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
+    prices = get_prices([GOV_TOKEN, STABLECOIN])
+    rsup_price = prices[GOV_TOKEN]
+    stablecoin_price = prices[STABLECOIN]
     time_remaining = 52 * WEEK
     ip = Contract(INSURANCE_POOL)
     
@@ -276,7 +279,7 @@ def get_retention_program_data(current_height):
     
     apr = 0
     if total_supply_remaining > 0:
-        apr = (remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
+        apr = (stablecoin_price * remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
     
     data = {
         'remaining_rsup': remaining_rsup,
