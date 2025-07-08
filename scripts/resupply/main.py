@@ -252,16 +252,18 @@ def get_retention_program_data(current_height):
     remaining_rsup = 2_500_000
     rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
     time_remaining = 52 * WEEK
+    ip = Contract(INSURANCE_POOL)
     
     snapshot_data = load_retention_snapshot_data()
     
     # Calculate total supply original (sum of all original balances)
-    total_supply_original = sum(snapshot_data.values()) / 1e18
+    total_supply_original = sum(snapshot_data.values())
+    total_supply_original = ip.convertToAssets(total_supply_original) / 1e18
     
     # TODO: Need retention contract address to get current balances
     # For now, we'll use the original balances as a placeholder
     retention_contract = Contract(RETENTION_PROGRAM)
-    total_supply_remaining = retention_contract.totalSupply() / 1e18
+    total_supply_remaining = ip.convertToAssets(retention_contract.totalSupply()) / 1e18
     # remaining_users = []
     # for user, original_balance in snapshot_data.items():
     #     current_balance = retention_contract.balanceOf(user) / 1e18
