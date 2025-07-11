@@ -251,9 +251,6 @@ def load_retention_snapshot_data():
 def get_retention_program_data(current_height):
     WEEK = 7 * 24 * 60 * 60
     remaining_rsup = 2_500_000
-    prices = get_prices([GOV_TOKEN, STABLECOIN])
-    rsup_price = prices[GOV_TOKEN]
-    stablecoin_price = prices[STABLECOIN]
     time_remaining = 52 * WEEK
     ip = Contract(INSURANCE_POOL)
     
@@ -267,25 +264,38 @@ def get_retention_program_data(current_height):
     # For now, we'll use the original balances as a placeholder
     retention_contract = Contract(RETENTION_PROGRAM)
     total_supply_remaining = ip.convertToAssets(retention_contract.totalSupply()) / 1e18
-    # remaining_users = []
-    # for user, original_balance in snapshot_data.items():
-    #     current_balance = retention_contract.balanceOf(user) / 1e18
-    #     if current_balance > 0:
-    #         remaining_users.append({
-    #             'address': user,
-    #             'original_balance': original_balance / 1e18,
-    #             'current_balance': current_balance
-    #         })
     
-    apr = 0
+    all_tokens = [GOV_TOKEN, STABLECOIN]
+    reward_tokens, reward_rates = utils.getInsurancePoolRewardRates()
+    all_tokens.extend(reward_tokens)
+    
+    prices = get_prices(all_tokens) # API call to defi llama
+    rsup_price = prices[GOV_TOKEN]
+    stablecoin_price = prices[STABLECOIN]
+    
+    # Calculate base APR from insurance pool rewards
+    base_apr = 0
+    for i, token in enumerate(reward_tokens):
+        if token in prices and prices[token] > 0:
+            token_apr = utils.apr(
+                reward_rates[i], 
+                prices[token] * 1e18,    # price of reward token
+                ip.convertToAssets(stablecoin_price * 1e18)  # price of deposit (stablecoin)
+            ) / 1e18 / 1e36
+            print(f"Token: {token}, APR: {token_apr}")
+            base_apr += token_apr
+    print(f"Base APR: {base_apr}")
+
+    retention_apr = 0
     if total_supply_remaining > 0:
-        apr = (stablecoin_price * remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
+        retention_apr = (stablecoin_price * remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
     
     data = {
         'remaining_rsup': remaining_rsup,
         'rsup_price': rsup_price,
         'time_remaining': time_remaining,
-        'apr': apr,
+        'apr': retention_apr,
+        'base_apr': base_apr,
         'total_supply_remaining': total_supply_remaining,
         'total_supply_original': total_supply_original,
         'withdrawal_feed': build_withdrawal_feed(current_height)
