@@ -12,6 +12,8 @@ from config import (
     get_json_path,
     INSURANCE_POOL,
     RETENTION_PROGRAM,
+    WEEK,
+    DAY,
 )
 import requests
 from utils.utils import get_prices
@@ -249,7 +251,8 @@ def load_retention_snapshot_data():
     return snapshot_data
 
 def get_retention_program_data(current_height):
-    WEEK = 7 * 24 * 60 * 60
+    ts = chain.time()
+    LAUNCH_TS = 1752807599
     remaining_rsup = 2_500_000
     time_remaining = 52 * WEEK
     ip = Contract(INSURANCE_POOL)
@@ -258,12 +261,14 @@ def get_retention_program_data(current_height):
     
     # Calculate total supply original (sum of all original balances)
     total_supply_original = sum(snapshot_data.values())
-    total_supply_original = ip.convertToAssets(total_supply_original) / 1e18
+    total_assets_original = ip.convertToAssets(total_supply_original) / 1e18
+    total_supply_original /= 10 ** 18
     
     # TODO: Need retention contract address to get current balances
     # For now, we'll use the original balances as a placeholder
     retention_contract = Contract(RETENTION_PROGRAM)
-    total_supply_remaining = ip.convertToAssets(retention_contract.totalSupply()) / 1e18
+    total_supply_remaining = retention_contract.totalSupply() / 1e18
+    total_assets_remaining = ip.convertToAssets(total_supply_remaining * 10 ** 18) / 1e18
     
     all_tokens = [GOV_TOKEN, STABLECOIN]
     reward_tokens, reward_rates = utils.getInsurancePoolRewardRates()
@@ -287,8 +292,15 @@ def get_retention_program_data(current_height):
     print(f"Base APR: {base_apr}")
 
     retention_apr = 0
-    if total_supply_remaining > 0:
-        retention_apr = (stablecoin_price * remaining_rsup / total_supply_remaining * rsup_price * time_remaining) / (52 * WEEK)
+    if total_assets_remaining > 0:
+        if ts < LAUNCH_TS:
+            retention_apr = (stablecoin_price * remaining_rsup / total_assets_remaining * rsup_price * time_remaining) / (52 * WEEK)
+        else:
+            period_finish = retention_contract.periodFinish()
+            if period_finish > ts:
+                reward_rate = retention_contract.rewardRate()
+                rewards_per_year = reward_rate * 365 * DAY
+                retention_apr = (rewards_per_year * rsup_price) / (total_assets_remaining * stablecoin_price)
     
     data = {
         'remaining_rsup': remaining_rsup,
@@ -296,8 +308,10 @@ def get_retention_program_data(current_height):
         'time_remaining': time_remaining,
         'apr': retention_apr,
         'base_apr': base_apr,
-        'total_supply_remaining': total_supply_remaining,
+        'total_assets_original': total_assets_original,
+        'total_assets_remaining': total_assets_remaining,
         'total_supply_original': total_supply_original,
+        'total_supply_remaining': total_supply_remaining,
         'withdrawal_feed': build_withdrawal_feed(current_height)
     }
     return data
