@@ -298,8 +298,7 @@ def get_retention_program_data(current_height):
         else:
             period_finish = retention_contract.periodFinish()
             if period_finish > ts:
-                reward_rate = retention_contract.rewardRate()
-                rewards_per_year = reward_rate * 365 * DAY
+                rewards_per_year = retention_contract.rewardRate() * 365 * DAY
                 retention_apr = (rewards_per_year * rsup_price) / (total_assets_remaining * stablecoin_price) / 1e18
     
     data = {
