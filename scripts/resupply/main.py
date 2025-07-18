@@ -14,13 +14,14 @@ from config import (
     RETENTION_PROGRAM,
     WEEK,
     DAY,
+    UTILITIES
 )
 import requests
 from utils.utils import get_prices
 
 registry = Contract(RESUPPLY_REGISTRY)
 deployer = Contract(RESUPPLY_DEPLOYER)
-utils = Contract(RESUPPLY_UTILS)
+utils = Contract(UTILITIES)
 rsup_price = 0
 
 # Global cache for CoinGecko tokens
@@ -72,8 +73,7 @@ class MarketData:
         self.resupply_utilization = 0
         if self.resupply_borrow_limit > 0:
             self.resupply_utilization = self.resupply_total_debt / self.resupply_borrow_limit
-        rate_info = pair.previewAddInterest()['_newCurrentRateInfo'].dict()
-        self.resupply_borrow_rate = rate_info['ratePerSec'] * 365 * 86400 / 1e18
+        self.resupply_borrow_rate = utils.getPairInterestRate.call(pair) * 365 * 86400 / 1e18
         self.resupply_total_collateral = pair.totalCollateral() / 1e18
         oracle = pair.exchangeRateInfo()['oracle']
         price = Contract(oracle).getPrices(self.market) / 1e18
