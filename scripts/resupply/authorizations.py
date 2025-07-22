@@ -86,8 +86,21 @@ def generate_selectors() -> Dict[str, str]:
 if __name__ == "__main__":
     generate_selectors()
 
+def get_active_authorizations(logs):
+    """Return only currently active authorizations from the log list."""
+    # Map: (selector_hex, caller, target) -> last log
+    last_state = {}
+    for entry in logs:
+        key = (entry['selector'][0], entry['caller'], entry['target'])
+        # Since logs are sorted newest first, only set if not already set
+        if key not in last_state:
+            last_state[key] = entry
+    # Only keep those where authorized is True
+    active = [entry for entry in last_state.values() if entry['authorized']]
+    return active
+
 def get_all_selectors(current_height=None):
-    """Get all authorization selectors with caching for efficiency"""
+    """Get all authorization selectors with caching for efficiency. Returns dict with 'all' and 'active'."""
     if not isinstance(current_height, int):
         current_height = chain.height
     
@@ -168,4 +181,6 @@ def get_all_selectors(current_height=None):
         json.dump(cache_data, f, indent=4)
     
     print(f"Authorizations: {len(complete_authorizations)} total entries, {len(truly_new_entries)} new entries")
-    return complete_authorizations
+    active_authorizations = get_active_authorizations(complete_authorizations)
+    print(f"Active authorizations: {len(active_authorizations)}")
+    return {'all': complete_authorizations, 'active': active_authorizations}
