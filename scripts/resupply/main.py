@@ -18,6 +18,7 @@ from config import (
 )
 import requests
 from utils.utils import get_prices
+from .authorizations import get_all_selectors
 
 registry = Contract(RESUPPLY_REGISTRY)
 deployer = Contract(RESUPPLY_DEPLOYER)
@@ -404,6 +405,9 @@ def main():
     current_height = chain.height
     retention_data = get_retention_program_data(current_height)
     
+    # Get Authorizations data
+    authorizations_data = get_all_selectors(current_height)
+    
     # Add metadata
     current_time = int(time.time())
     
@@ -411,6 +415,7 @@ def main():
     data = {
         'data': market_data,
         'retention_program': retention_data,
+        'authorizations': authorizations_data,
         'last_update': current_time,
         'last_update_block': current_height,
     }
