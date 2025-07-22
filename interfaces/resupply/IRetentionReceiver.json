@@ -13,22 +13,17 @@
         "internalType": "address"
       },
       {
-        "name": "_maxAdditionalFee",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_emissionsController",
+        "type": "address",
+        "internalType": "address"
       },
       {
-        "name": "_insuranceSplit",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_retentionRewards",
+        "type": "address",
+        "internalType": "address"
       },
       {
-        "name": "_treasurySplit",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_stakedStableSplit",
+        "name": "_treasuryAllocationPerEpoch",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -37,7 +32,46 @@
   },
   {
     "type": "function",
-    "name": "BPS",
+    "name": "MAX_REWARDS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "allocateEmissions",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimEmissions",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimableEmissions",
     "inputs": [],
     "outputs": [
       {
@@ -63,10 +97,29 @@
   },
   {
     "type": "function",
-    "name": "distribute",
+    "name": "distributedRewards",
     "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "emissionsController",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IEmissionsController"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -77,61 +130,6 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "epochWeighting",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "index",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "timestamp",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "avgWeighting",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "feeLogger",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IFeeLogger"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "feeToken",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -151,13 +149,52 @@
   },
   {
     "type": "function",
-    "name": "maxAdditionalFeeRatio",
+    "name": "getReceiverId",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "govToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastEpoch",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "name",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -177,25 +214,25 @@
   },
   {
     "type": "function",
-    "name": "priceWatcher",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "registry",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
+        "internalType": "contract IResupplyRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "retentionRewards",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
         "internalType": "address"
       }
     ],
@@ -203,72 +240,16 @@
   },
   {
     "type": "function",
-    "name": "setMaxAdditionalFeeRatio",
+    "name": "setTreasuryAllocationPerEpoch",
     "inputs": [
       {
-        "name": "_maxAdditionalFee",
+        "name": "_treasuryAllocationPerEpoch",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setSplits",
-    "inputs": [
-      {
-        "name": "_insuranceSplit",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_treasurySplit",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_platformSplit",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_stakedStableSplit",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "splits",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "insurance",
-        "type": "uint40",
-        "internalType": "uint40"
-      },
-      {
-        "name": "treasury",
-        "type": "uint40",
-        "internalType": "uint40"
-      },
-      {
-        "name": "platform",
-        "type": "uint40",
-        "internalType": "uint40"
-      },
-      {
-        "name": "stakedStable",
-        "type": "uint40",
-        "internalType": "uint40"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -284,45 +265,40 @@
     "stateMutability": "view"
   },
   {
-    "type": "event",
-    "name": "MaxAdditionalFeeRatioSet",
+    "type": "function",
+    "name": "sweepERC20",
     "inputs": [
       {
-        "name": "ratio",
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "treasuryAllocationPerEpoch",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
         "type": "uint256",
-        "indexed": false,
         "internalType": "uint256"
       }
     ],
-    "anonymous": false
+    "stateMutability": "view"
   },
   {
     "type": "event",
-    "name": "SplitsSet",
+    "name": "TreasuryAllocationPerEpochSet",
     "inputs": [
       {
-        "name": "insurance",
-        "type": "uint40",
+        "name": "_treasuryAllocationPerEpoch",
+        "type": "uint256",
         "indexed": false,
-        "internalType": "uint40"
-      },
-      {
-        "name": "treasury",
-        "type": "uint40",
-        "indexed": false,
-        "internalType": "uint40"
-      },
-      {
-        "name": "platform",
-        "type": "uint40",
-        "indexed": false,
-        "internalType": "uint40"
-      },
-      {
-        "name": "stakedStable",
-        "type": "uint40",
-        "indexed": false,
-        "internalType": "uint40"
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

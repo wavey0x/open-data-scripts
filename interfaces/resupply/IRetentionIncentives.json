@@ -13,7 +13,12 @@
         "internalType": "address"
       },
       {
-        "name": "_underlyingOracle",
+        "name": "_rewardToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_insurancePool",
         "type": "address",
         "internalType": "address"
       }
@@ -22,8 +27,14 @@
   },
   {
     "type": "function",
-    "name": "PRECISION",
-    "inputs": [],
+    "name": "balanceOf",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [
       {
         "name": "",
@@ -35,16 +46,16 @@
   },
   {
     "type": "function",
-    "name": "baseRedemptionFee",
-    "inputs": [],
-    "outputs": [
+    "name": "checkpoint_multiple",
+    "inputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_accounts",
+        "type": "address[]",
+        "internalType": "address[]"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -61,27 +72,8 @@
   },
   {
     "type": "function",
-    "name": "debtToken",
+    "name": "currentRewards",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getMaxRedeemableDebt",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
     "outputs": [
       {
         "name": "",
@@ -93,13 +85,8 @@
   },
   {
     "type": "function",
-    "name": "getRedemptionFeePct",
+    "name": "donate",
     "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      },
       {
         "name": "_amount",
         "type": "uint256",
@@ -109,15 +96,15 @@
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
-    "stateMutability": "view"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "maxDiscount",
+    "name": "duration",
     "inputs": [],
     "outputs": [
       {
@@ -130,7 +117,64 @@
   },
   {
     "type": "function",
-    "name": "maxUsage",
+    "name": "earned",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getReward",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getReward",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_forwardTo",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getReward",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "historicalRewards",
     "inputs": [],
     "outputs": [
       {
@@ -143,7 +187,33 @@
   },
   {
     "type": "function",
-    "name": "overWeight",
+    "name": "insurancePool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isFinalized",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastTimeRewardApplicable",
     "inputs": [],
     "outputs": [
       {
@@ -156,7 +226,7 @@
   },
   {
     "type": "function",
-    "name": "overusageMax",
+    "name": "lastUpdateTime",
     "inputs": [],
     "outputs": [
       {
@@ -169,21 +239,14 @@
   },
   {
     "type": "function",
-    "name": "overusageRate",
-    "inputs": [],
-    "outputs": [
+    "name": "originalBalanceOf",
+    "inputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "overusageStart",
-    "inputs": [],
     "outputs": [
       {
         "name": "",
@@ -208,92 +271,40 @@
   },
   {
     "type": "function",
-    "name": "previewRedeem",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
+    "name": "periodFinish",
+    "inputs": [],
     "outputs": [
-      {
-        "name": "_returnedUnderlying",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_returnedCollateral",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_fee",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "ratingData",
-    "inputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "timestamp",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "usage",
-        "type": "uint192",
-        "internalType": "uint192"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "redeemFromPair",
+    "name": "queueNewRewards",
     "inputs": [
       {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
+        "name": "_rewards",
         "type": "uint256",
         "internalType": "uint256"
-      },
+      }
+    ],
+    "outputs": [
       {
-        "name": "_maxFeePct",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_receiver",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_redeemToUnderlying",
+        "name": "",
         "type": "bool",
         "internalType": "bool"
       }
     ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "queuedRewards",
+    "inputs": [],
     "outputs": [
       {
         "name": "",
@@ -301,7 +312,7 @@
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -318,105 +329,7 @@
   },
   {
     "type": "function",
-    "name": "setBaseRedemptionFee",
-    "inputs": [
-      {
-        "name": "_fee",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setDiscountInfo",
-    "inputs": [
-      {
-        "name": "_rate",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_maxUsage",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_maxDiscount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setOverusageInfo",
-    "inputs": [
-      {
-        "name": "_rate",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_start",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_end",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setUnderlyingOracle",
-    "inputs": [
-      {
-        "name": "_oracle",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setWeightLimit",
-    "inputs": [
-      {
-        "name": "_weightLimit",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "totalWeight",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "underlyingOracle",
+    "name": "rewardHandler",
     "inputs": [],
     "outputs": [
       {
@@ -429,7 +342,7 @@
   },
   {
     "type": "function",
-    "name": "usageDecayRate",
+    "name": "rewardPerToken",
     "inputs": [],
     "outputs": [
       {
@@ -441,11 +354,183 @@
     "stateMutability": "view"
   },
   {
-    "type": "event",
-    "name": "SetBaseRedemptionFee",
+    "type": "function",
+    "name": "rewardPerTokenStored",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardRate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardRedirect",
     "inputs": [
       {
-        "name": "_fee",
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewards",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setAddressBalances",
+    "inputs": [
+      {
+        "name": "_addressList",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "_balanceList",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setRewardHandler",
+    "inputs": [
+      {
+        "name": "_handler",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setRewardRedirect",
+    "inputs": [
+      {
+        "name": "_to",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "totalSupply",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "userRewardPerTokenPaid",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "user_checkpoint",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Finalize",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RewardAdded",
+    "inputs": [
+      {
+        "name": "reward",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -455,22 +540,16 @@
   },
   {
     "type": "event",
-    "name": "SetDiscountInfo",
+    "name": "RewardPaid",
     "inputs": [
       {
-        "name": "_fee",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        "name": "_maxUsage",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_maxDiscount",
+        "name": "reward",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -480,35 +559,29 @@
   },
   {
     "type": "event",
-    "name": "SetOverusageInfo",
+    "name": "RewardRedirected",
     "inputs": [
       {
-        "name": "_fee",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        "name": "_start",
-        "type": "uint256",
+        "name": "redirect",
+        "type": "address",
         "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_end",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        "internalType": "address"
       }
     ],
     "anonymous": false
   },
   {
     "type": "event",
-    "name": "SetUnderlyingOracle",
+    "name": "SetRewardHandler",
     "inputs": [
       {
-        "name": "_oracle",
+        "name": "handler",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -518,15 +591,38 @@
   },
   {
     "type": "event",
-    "name": "SetWeightLimit",
+    "name": "WeightSet",
     "inputs": [
       {
-        "name": "_weightLimit",
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldWeight",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newWeight",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   }
 ]

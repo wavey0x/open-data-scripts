@@ -18,9 +18,73 @@
         "internalType": "address"
       },
       {
-        "name": "_initialoperator",
+        "name": "_initialOperator",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "_defaultConfigData",
+        "type": "tuple",
+        "internalType": "struct ResupplyPairDeployer.ConfigData",
+        "components": [
+          {
+            "name": "oracle",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "rateCalculator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxLTV",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "initialBorrowLimit",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "liquidationFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "mintFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "protocolRedemptionFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "_previouslyDeployedPairs",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "_previouslyDeployedPairsInfo",
+        "type": "tuple[]",
+        "internalType": "struct ResupplyPairDeployer.DeployInfo[]",
+        "components": [
+          {
+            "name": "protocolId",
+            "type": "uint40",
+            "internalType": "uint40"
+          },
+          {
+            "name": "deployTime",
+            "type": "uint40",
+            "internalType": "uint40"
+          }
+        ]
       }
     ],
     "stateMutability": "nonpayable"
@@ -33,6 +97,16 @@
         "name": "_protocolName",
         "type": "string",
         "internalType": "string"
+      },
+      {
+        "name": "_amountToBurn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_minShareBurnAmount",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "_borrowTokenSig",
@@ -124,6 +198,56 @@
   },
   {
     "type": "function",
+    "name": "defaultConfigData",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ResupplyPairDeployer.ConfigData",
+        "components": [
+          {
+            "name": "oracle",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "rateCalculator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxLTV",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "initialBorrowLimit",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "liquidationFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "mintFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "protocolRedemptionFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "deploy",
     "inputs": [
       {
@@ -155,6 +279,93 @@
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "deploy",
+    "inputs": [
+      {
+        "name": "_protocolId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_collateral",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_underlyingStaking",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_underlyingStakingId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "_pairAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "deployInfo",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "protocolId",
+        "type": "uint40",
+        "internalType": "uint40"
+      },
+      {
+        "name": "deployTime",
+        "type": "uint40",
+        "internalType": "uint40"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getBorrowAndCollateralTokens",
+    "inputs": [
+      {
+        "name": "_protocolId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_collateral",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "_borrowToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_collateralToken",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -256,6 +467,74 @@
   },
   {
     "type": "function",
+    "name": "predictPairAddress",
+    "inputs": [
+      {
+        "name": "_protocolId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_collateral",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_underlyingStaking",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_underlyingStakingId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "predictPairAddress",
+    "inputs": [
+      {
+        "name": "_protocolId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_configData",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "_underlyingStaking",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_underlyingStakingId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "registry",
     "inputs": [],
     "outputs": [
@@ -282,6 +561,49 @@
   },
   {
     "type": "function",
+    "name": "setDefaultConfigData",
+    "inputs": [
+      {
+        "name": "_oracle",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_rateCalculator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_maxLTV",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_initialBorrowLimit",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_liquidationFee",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_mintFee",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_protocolRedemptionFee",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setOperator",
     "inputs": [
       {
@@ -290,7 +612,7 @@
         "internalType": "address"
       },
       {
-        "name": "_valid",
+        "name": "_approved",
         "type": "bool",
         "internalType": "bool"
       }
@@ -315,6 +637,16 @@
         "internalType": "string"
       },
       {
+        "name": "amountToBurn",
+        "type": "uint80",
+        "internalType": "uint80"
+      },
+      {
+        "name": "minShareBurnAmount",
+        "type": "uint80",
+        "internalType": "uint80"
+      },
+      {
         "name": "borrowTokenSig",
         "type": "bytes4",
         "internalType": "bytes4"
@@ -323,6 +655,19 @@
         "name": "collateralTokenSig",
         "type": "bytes4",
         "internalType": "bytes4"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "supportedProtocolsLength",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -340,6 +685,16 @@
         "name": "_protocolName",
         "type": "string",
         "internalType": "string"
+      },
+      {
+        "name": "_amountToBurn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_minShareBurnAmount",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "_borrowTokenSig",
@@ -383,6 +738,55 @@
       }
     ],
     "stateMutability": "pure"
+  },
+  {
+    "type": "event",
+    "name": "DefaultConfigDataSet",
+    "inputs": [
+      {
+        "name": "oracle",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "rateCalculator",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "maxLTV",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialBorrowLimit",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidationFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "mintFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "protocolRedemptionFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -435,6 +839,25 @@
   },
   {
     "type": "event",
+    "name": "OperatorSet",
+    "inputs": [
+      {
+        "name": "_operator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "_approved",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ProtocolUpdated",
     "inputs": [
       {
@@ -466,19 +889,13 @@
   },
   {
     "type": "event",
-    "name": "SetOperator",
+    "name": "StateMigrated",
     "inputs": [
       {
-        "name": "_op",
+        "name": "_previousPairDeployer",
         "type": "address",
         "indexed": true,
         "internalType": "address"
-      },
-      {
-        "name": "_valid",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -490,7 +907,32 @@
   },
   {
     "type": "error",
+    "name": "InvalidAmountToBurn",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidBorrowOrCollateralTokenLookup",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfigData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidMinShareBurnAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NonUniqueName",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotEnoughSharesBurned",
     "inputs": []
   },
   {
@@ -512,6 +954,17 @@
     "type": "error",
     "name": "ProtocolNotFound",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   },
   {
     "type": "error",

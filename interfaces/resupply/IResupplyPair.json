@@ -2379,6 +2379,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidOraclePrice",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidParameter",
     "inputs": []
   },

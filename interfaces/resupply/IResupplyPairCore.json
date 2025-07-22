@@ -1634,6 +1634,16 @@
   },
   {
     "type": "error",
+    "name": "FeesAlreadyDistributed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "IncorrectStakeBalance",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "Insolvent",
     "inputs": [
       {
@@ -1682,6 +1692,11 @@
   {
     "type": "error",
     "name": "InvalidLiquidator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidOraclePrice",
     "inputs": []
   },
   {
