@@ -6,31 +6,32 @@ from brownie import web3, ZERO_ADDRESS, chain, interface
 from .constants import CONTRACTS
 from utils.utils import contract_creation_block
 
+SELECTORS = None
+
+def get_selectors() -> Dict[str, str]:
+    """Load the selectors from selectors.json, caching in memory."""
+    global SELECTORS
+    if SELECTORS is not None:
+        return SELECTORS
+    # Determine project root
+    project_root = Path(__file__).resolve().parents[2]
+    selectors_file = project_root / "data/selectors.json"
+    if not selectors_file.exists():
+        SELECTORS = {}
+        print("No selectors file found.")
+        return SELECTORS
+    with open(selectors_file, 'r') as f:
+        SELECTORS = json.load(f)
+    print(f"Loaded {len(SELECTORS)} selectors from {selectors_file}")
+    return SELECTORS
+
 def get_function_selector(signature: str) -> str:
     """Generate function selector from function signature"""
     return Web3.keccak(text=signature)[:4].hex()
 
-def load_selectors() -> Dict[str, str]:
-    """Load the selectors from selectors.json"""
-    project_root = Path(__file__).parent.parent
-    selectors_file = project_root / "selectors.json"
-    
-    if not selectors_file.exists():
-        return {}
-        
-    with open(selectors_file, 'r') as f:
-        return json.load(f)
-
 def lookup_selector(selector_hex: str) -> Optional[str]:
-    """Look up a function signature by its selector in selectors.json
-    
-    Args:
-        selector_hex: The function selector hex string, with or without '0x' prefix
-        
-    Returns:
-        The function signature if found, None if not found
-    """
-    selectors = load_selectors()
+    """Look up a function signature by its selector in selectors.json"""
+    selectors = get_selectors()
     
     # Remove '0x' prefix if present for consistency
     selector_hex = selector_hex.lower().replace('0x', '')
@@ -40,9 +41,9 @@ def lookup_selector(selector_hex: str) -> Optional[str]:
 
 def generate_selectors() -> Dict[str, str]:
     """Generate and save selectors from interface JSONs"""
-    project_root = Path(__file__).parent.parent
-    interfaces_dir = project_root / "interfaces"
-    selectors_file = project_root / "selectors.json"
+    project_root = Path(__file__).resolve().parents[2]
+    interfaces_dir = project_root / "interfaces/resupply"
+    selectors_file = project_root / "data/selectors.json"
     
     selectors = {}
     
@@ -70,7 +71,7 @@ def generate_selectors() -> Dict[str, str]:
                     
                     # Generate and store selector
                     selector = get_function_selector(signature)
-                    selectors[selector] = f"{contract_name}.{signature}"
+                    selectors[selector] = f"{signature}"
     
     # Save selectors to JSON file
     with open(selectors_file, 'w') as f:
@@ -110,6 +111,8 @@ def get_all_selectors(current_height=None):
         except (json.JSONDecodeError, FileNotFoundError):
             last_processed_block = CORE_DEPLOY_BLOCK
     
+    generate_selectors()
+
     # Get new events since last processed block
     new_authorizations = []
     if last_processed_block < current_height:
@@ -121,7 +124,7 @@ def get_all_selectors(current_height=None):
             new_authorizations.append({
                 'block': log.blockNumber,
                 'txn': log.transactionHash.hex(),
-                'selector': (selector_hex, lookup_selector(selector_hex)),
+                'selector': (selector_hex, ""),
                 'caller': log.args.caller,
                 'auth_hook': log.args.authHook,
                 'authorized': log.args.authorized,
@@ -145,6 +148,14 @@ def get_all_selectors(current_height=None):
     # Combine cached and new entries, sort by newest first
     complete_authorizations = cached_authorizations + truly_new_entries
     complete_authorizations.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    # Lookup selectors
+    for entry in complete_authorizations:
+        selector_hex = entry['selector'][0]
+        signature = lookup_selector(selector_hex)
+        if signature is None:
+            print(f"Selector {selector_hex} not found in selectors mapping!", flush=True)
+        entry['selector'] = (selector_hex, signature)
     
     # Save updated cache
     cache_data = {
