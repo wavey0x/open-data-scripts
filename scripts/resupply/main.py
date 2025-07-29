@@ -487,10 +487,11 @@ def get_loan_repayment_data(current_height):
                 'block': i
             }
         )
+        # More granular sampling before the target timestamp
         if ts < 1750984019:
-            i += blocks_in_day // 24
+            i += 300  # Hourly sampling (7200/24 = 300 blocks)
         else:
-            i += blocks_in_day
+            i += blocks_in_day  # Daily sampling
 
     # Build yearn loan history (load from cache, then add new entries)
     yearn_loan_history = cached_yearn_loan_history.copy()
