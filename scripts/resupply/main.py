@@ -464,6 +464,14 @@ def get_loan_repayment_data(current_height):
             'amount': 643051.79,
             'shares': 643051.79,  # Assuming 1:1 ratio for hardcoded data
             'timestamp': 1750930499  # Jun-26-2025 02:14:59 PM UTC
+        },
+        {
+            'block': 22830881,
+            'txn': '0x355eb285b2d1de1b8a6f6799f9694e4bcfe2886d59e4ef9a1f37581939ad7e1e',
+            'payer': '0x00000000efe883b3304aFf71eaCf72Dbc3e1b577',
+            'amount': 6000000.0,
+            'shares': 6000000.0,  # Assuming 1:1 ratio for hardcoded data
+            'timestamp': 1751444159  # Jul-02-2025 10:15:59 AM UTC
         }
     ]
     
