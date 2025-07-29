@@ -487,7 +487,7 @@ def get_loan_repayment_data(current_height):
                 'block': i
             }
         )
-        if ts > 1750897127 and ts < 1750984019:
+        if ts < 1750984019:
             i += blocks_in_day // 24
         else:
             i += blocks_in_day
