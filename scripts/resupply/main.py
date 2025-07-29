@@ -467,6 +467,21 @@ def get_loan_repayment_data(current_height):
                 'timestamp': chain[log.blockNumber].timestamp
             })
     
+    bad_debt_history = []
+    pair = Contract('0x6e90c85a495d54c6d7E1f3400FEF1f6e59f86bd6')
+    blocks_in_day = 7200
+    max_block = max((entry['block'] for entry in bad_debt_history), default=0)
+    start_block = max(22833775, max_block)
+    for i in range(start_block, current_height):
+        bad_debt_history.append(
+            {
+                'amount': pair.totalBorrow(block_identifier=i)['amount']/1e18,
+                'timestamp': chain[i].timestamp,
+                'block': i
+            }
+        )
+        i = min(i + blocks_in_day, current_height)
+
     # Combine cached and new entries, sort by newest first
     complete_repayments = cached_repayments + new_repayments
     complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
@@ -478,7 +493,8 @@ def get_loan_repayment_data(current_height):
     cache_data = {
         'repayments': complete_repayments,
         'bad_debt_payments': complete_bad_debt_payments,
-        'last_processed_block': current_height
+        'last_processed_block': current_height,
+        'bad_debt_history': bad_debt_history
     }
     
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
