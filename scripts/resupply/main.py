@@ -482,6 +482,17 @@ def get_loan_repayment_data(current_height):
         )
         i = min(i + blocks_in_day, current_height)
 
+    yearn_loan_history = []
+    max_block = max((entry['block'] for entry in yearn_loan_history), default=0)
+    start_block = max(23024118, max_block) # Deploy block
+    for i in range(start_block, current_height):
+        yearn_loan_history.append(
+            {
+                'amount': repayer.remainingLoan(block_identifier=i) / 1e18,
+                'timestamp': chain[i].timestamp,
+                'block': i
+            }
+        )
     # Combine cached and new entries, sort by newest first
     complete_repayments = cached_repayments + new_repayments
     complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
@@ -494,7 +505,8 @@ def get_loan_repayment_data(current_height):
         'repayments': complete_repayments,
         'bad_debt_payments': complete_bad_debt_payments,
         'last_processed_block': current_height,
-        'bad_debt_history': bad_debt_history
+        'bad_debt_history': bad_debt_history,
+        'yearn_loan_history': yearn_loan_history
     }
     
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
