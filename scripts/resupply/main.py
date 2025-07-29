@@ -472,7 +472,8 @@ def get_loan_repayment_data(current_height):
     blocks_in_day = 7200
     max_block = max((entry['block'] for entry in bad_debt_history), default=0)
     start_block = max(22833775, max_block)
-    for i in range(start_block, current_height):
+    i = start_block
+    while i < current_height:
         bad_debt_history.append(
             {
                 'amount': pair.totalBorrow(block_identifier=i)['amount']/1e18,
@@ -480,12 +481,13 @@ def get_loan_repayment_data(current_height):
                 'block': i
             }
         )
-        i = min(i + blocks_in_day, current_height)
+        i += blocks_in_day
 
     yearn_loan_history = []
     max_block = max((entry['block'] for entry in yearn_loan_history), default=0)
     start_block = max(23024118, max_block) # Deploy block
-    for i in range(start_block, current_height):
+    i = start_block
+    while i < current_height:
         yearn_loan_history.append(
             {
                 'amount': repayer.remainingLoan(block_identifier=i) / 1e18,
@@ -493,6 +495,7 @@ def get_loan_repayment_data(current_height):
                 'block': i
             }
         )
+        i += blocks_in_day
     # Combine cached and new entries, sort by newest first
     complete_repayments = cached_repayments + new_repayments
     complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
