@@ -14,7 +14,10 @@ from config import (
     RETENTION_PROGRAM,
     WEEK,
     DAY,
-    UTILITIES
+    UTILITIES,
+    LOAN_REPAYER,
+    LOAN_CONVERTER,
+    BAD_DEBT_REPAYER
 )
 import requests
 from utils.utils import get_prices
@@ -394,6 +397,104 @@ def build_withdrawal_feed(current_height):
     print(f"Withdrawal feed: {len(complete_feed)} total entries, {len(truly_new_entries)} new entries")
     return complete_feed
 
+def get_loan_repayment_data(current_height):
+    """Get loan repayment data with caching for efficiency"""
+    if not isinstance(current_height, int):
+        current_height = chain.height
+    
+    DEPLOY_BLOCK = 22833775
+    CACHE_FILE = 'loan_repayment_cache.json'
+    
+    # Use /data directory at root of project
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    cache_path = os.path.join(project_root, 'data', CACHE_FILE)
+    
+    # Load existing cache
+    cached_repayments = []
+    cached_bad_debt_payments = []
+    last_processed_block = DEPLOY_BLOCK
+    
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, 'r') as f:
+                cache_data = json.load(f)
+                cached_repayments = cache_data.get('repayments', [])
+                cached_bad_debt_payments = cache_data.get('bad_debt_payments', [])
+                last_processed_block = cache_data.get('last_processed_block', DEPLOY_BLOCK)
+        except (json.JSONDecodeError, FileNotFoundError):
+            last_processed_block = DEPLOY_BLOCK
+    
+    # Get current contract states
+    repayer = Contract(LOAN_REPAYER)
+    remaining_debt = repayer.remainingLoan() / 1e18
+    total_repaid = repayer.totalRepaid() / 1e18
+    
+    bad_debt_repayer = Contract(BAD_DEBT_REPAYER)
+    remaining_bad_debt = bad_debt_repayer.remainingBadDebt() / 1e18
+    bad_debt_paid = max(10_000_000 - remaining_bad_debt, 0)
+    
+    loan_converter = Contract(LOAN_CONVERTER)
+    
+    # Get new events since last processed block
+    new_repayments = []
+    new_bad_debt_payments = []
+    
+    if last_processed_block < current_height:
+        # Get repayment events
+        repayment_logs = repayer.events.Repayment.get_logs(fromBlock=last_processed_block + 1, toBlock=current_height)
+        for log in repayment_logs:
+            new_repayments.append({
+                'block': log.blockNumber,
+                'txn': log.transactionHash.hex(),
+                'repayer': log.args.repayer,
+                'amount': log.args.amount / 1e18,
+                'timestamp': chain[log.blockNumber].timestamp
+            })
+        
+        # Get bad debt repayment events
+        bad_debt_logs = bad_debt_repayer.events.BadDebtPaid.get_logs(fromBlock=last_processed_block + 1, toBlock=current_height)
+        for log in bad_debt_logs:
+            new_bad_debt_payments.append({
+                'block': log.blockNumber,
+                'txn': log.transactionHash.hex(),
+                'payer': log.args.payer,
+                'amount': log.args.amount / 1e18,
+                'shares': log.args.shares / 1e18,
+                'timestamp': chain[log.blockNumber].timestamp
+            })
+    
+    # Combine cached and new entries, sort by newest first
+    complete_repayments = cached_repayments + new_repayments
+    complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    complete_bad_debt_payments = cached_bad_debt_payments + new_bad_debt_payments
+    complete_bad_debt_payments.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    # Save updated cache
+    cache_data = {
+        'repayments': complete_repayments,
+        'bad_debt_payments': complete_bad_debt_payments,
+        'last_processed_block': current_height
+    }
+    
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    with open(cache_path, 'w') as f:
+        json.dump(cache_data, f, indent=4)
+    
+    print(f"Loan repayments: {len(complete_repayments)} total entries, {len(new_repayments)} new entries")
+    print(f"Bad debt payments: {len(complete_bad_debt_payments)} total entries, {len(new_bad_debt_payments)} new entries")
+    
+    return {
+        'repayments': complete_repayments,
+        'bad_debt_payments': complete_bad_debt_payments,
+        'current_state': {
+            'remaining_debt': remaining_debt,
+            'total_repaid': total_repaid,
+            'remaining_bad_debt': remaining_bad_debt,
+            'bad_debt_paid': bad_debt_paid
+        }
+    }
+    
 def main():
     # Initialize CoinGecko tokens cache
     get_coingecko_tokens()
@@ -408,6 +509,9 @@ def main():
     # Get Authorizations data
     authorizations_data = get_all_selectors(current_height)
     
+    # Get Loan Repayment data
+    loan_repayment_data = get_loan_repayment_data(current_height)
+    
     # Add metadata
     current_time = int(time.time())
     
@@ -416,6 +520,7 @@ def main():
         'data': market_data,
         'retention_program': retention_data,
         'authorizations': authorizations_data,
+        'loan_repayment': loan_repayment_data,
         'last_update': current_time,
         'last_update_block': current_height,
     }
