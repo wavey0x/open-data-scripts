@@ -528,7 +528,8 @@ def get_loan_repayment_data(current_height):
             i += 300  # Hourly sampling (7200/24 = 300 blocks)
         else:
             i += blocks_in_day  # Daily sampling
-
+    bad_debt_history.append({'amount': pair.totalBorrow(block_identifier=current_height)['amount']/1e18, 'timestamp': chain[current_height].timestamp, 'block': current_height})
+        
     # Build yearn loan history (load from cache, then add new entries)
     yearn_loan_history = cached_yearn_loan_history.copy()
     max_block = max((entry['block'] for entry in yearn_loan_history), default=0)
@@ -543,6 +544,8 @@ def get_loan_repayment_data(current_height):
             }
         )
         i += blocks_in_day
+    yearn_loan_history.append({'amount': repayer.remainingLoan(block_identifier=current_height) / 1e18, 'timestamp': chain[current_height].timestamp, 'block': current_height})
+    
     # Combine cached and new entries, sort by newest first
     complete_repayments = cached_repayments + new_repayments
     complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
