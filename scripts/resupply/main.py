@@ -412,6 +412,8 @@ def get_loan_repayment_data(current_height):
     # Load existing cache
     cached_repayments = []
     cached_bad_debt_payments = []
+    cached_bad_debt_history = []
+    cached_yearn_loan_history = []
     last_processed_block = DEPLOY_BLOCK
     
     if os.path.exists(cache_path):
@@ -420,6 +422,8 @@ def get_loan_repayment_data(current_height):
                 cache_data = json.load(f)
                 cached_repayments = cache_data.get('repayments', [])
                 cached_bad_debt_payments = cache_data.get('bad_debt_payments', [])
+                cached_bad_debt_history = cache_data.get('bad_debt_history', [])
+                cached_yearn_loan_history = cache_data.get('yearn_loan_history', [])
                 last_processed_block = cache_data.get('last_processed_block', DEPLOY_BLOCK)
         except (json.JSONDecodeError, FileNotFoundError):
             last_processed_block = DEPLOY_BLOCK
@@ -467,7 +471,8 @@ def get_loan_repayment_data(current_height):
                 'timestamp': chain[log.blockNumber].timestamp
             })
     
-    bad_debt_history = []
+    # Build bad debt history (load from cache, then add new entries)
+    bad_debt_history = cached_bad_debt_history.copy()
     pair = Contract('0x6e90c85a495d54c6d7E1f3400FEF1f6e59f86bd6')
     blocks_in_day = 7200
     max_block = max((entry['block'] for entry in bad_debt_history), default=0)
@@ -483,7 +488,8 @@ def get_loan_repayment_data(current_height):
         )
         i += blocks_in_day
 
-    yearn_loan_history = []
+    # Build yearn loan history (load from cache, then add new entries)
+    yearn_loan_history = cached_yearn_loan_history.copy()
     max_block = max((entry['block'] for entry in yearn_loan_history), default=0)
     start_block = max(23024118, max_block) # Deploy block
     i = start_block
@@ -527,7 +533,9 @@ def get_loan_repayment_data(current_height):
             'total_repaid': total_repaid,
             'remaining_bad_debt': remaining_bad_debt,
             'bad_debt_paid': bad_debt_paid
-        }
+        },
+        'bad_debt_history': bad_debt_history,
+        'yearn_loan_history': yearn_loan_history
     }
     
 def main():
