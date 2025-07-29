@@ -439,6 +439,34 @@ def get_loan_repayment_data(current_height):
     
     loan_converter = Contract(LOAN_CONVERTER)
     
+    # Hardcoded bad debt repayments
+    hardcoded_bad_debt_payments = [
+        {
+            'block': 22792135,
+            'txn': '0x18884d0a608f6431fb4d5efa308afc1920d0f09d9691e5e22e849de61719b626',
+            'payer': '0xAAc0aa431c237C2C0B5f041c8e59B3f1a43aC78F',
+            'amount': 1407736.69,
+            'shares': 1407736.69,  # Assuming 1:1 ratio for hardcoded data
+            'timestamp': 1750984019  # Jun-27-2025 12:16:11 AM UTC
+        },
+        {
+            'block': 22796352,
+            'txn': '0x1c6c24cbe0d090a953dc1df7ecae8403f6d5b317e0127048f9aacf22e2e5336e',
+            'payer': '0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB',
+            'amount': 818360.45,
+            'shares': 818360.45,  # Assuming 1:1 ratio for hardcoded data
+            'timestamp': 1751028251  # Jun-27-2025 02:24:11 PM UTC
+        },
+        {
+            'block': 22789147,
+            'txn': '0x7225c1e2793368234c6f133924906e9bea336dabbc363c7513f886eaa812c55c',
+            'payer': '0xFE11a5009f2121622271e7dd0FD470264e076af6',
+            'amount': 643051.79,
+            'shares': 643051.79,  # Assuming 1:1 ratio for hardcoded data
+            'timestamp': 1750930499  # Jun-26-2025 02:14:59 PM UTC
+        }
+    ]
+    
     # Get new events since last processed block
     new_repayments = []
     new_bad_debt_payments = []
@@ -511,7 +539,15 @@ def get_loan_repayment_data(current_height):
     complete_repayments = cached_repayments + new_repayments
     complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
     
+    # Combine cached and new bad debt payments
     complete_bad_debt_payments = cached_bad_debt_payments + new_bad_debt_payments
+    
+    # Add hardcoded payments only if they don't already exist
+    existing_txns = {entry['txn'] for entry in complete_bad_debt_payments}
+    for hardcoded_payment in hardcoded_bad_debt_payments:
+        if hardcoded_payment['txn'] not in existing_txns:
+            complete_bad_debt_payments.append(hardcoded_payment)
+    
     complete_bad_debt_payments.sort(key=lambda x: x['timestamp'], reverse=True)
     
     # Save updated cache
