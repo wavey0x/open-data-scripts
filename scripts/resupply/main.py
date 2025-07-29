@@ -479,14 +479,18 @@ def get_loan_repayment_data(current_height):
     start_block = max(22784988, max_block) # Attack block
     i = start_block
     while i < current_height:
+        ts = chain[i].timestamp
         bad_debt_history.append(
             {
                 'amount': pair.totalBorrow(block_identifier=i)['amount']/1e18,
-                'timestamp': chain[i].timestamp,
+                'timestamp': ts,
                 'block': i
             }
         )
-        i += blocks_in_day
+        if ts > 1750897127 and ts < 1750984019:
+            i += blocks_in_day / 24
+        else:
+            i += blocks_in_day
 
     # Build yearn loan history (load from cache, then add new entries)
     yearn_loan_history = cached_yearn_loan_history.copy()
