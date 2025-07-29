@@ -476,7 +476,7 @@ def get_loan_repayment_data(current_height):
     pair = Contract('0x6e90c85a495d54c6d7E1f3400FEF1f6e59f86bd6')
     blocks_in_day = 7200
     max_block = max((entry['block'] for entry in bad_debt_history), default=0)
-    start_block = max(22833775, max_block)
+    start_block = max(22784988, max_block) # Attack block
     i = start_block
     while i < current_height:
         bad_debt_history.append(
