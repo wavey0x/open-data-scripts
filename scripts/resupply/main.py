@@ -443,11 +443,15 @@ def get_loan_repayment_data(current_height):
         # Get repayment events
         repayment_logs = repayer.events.Repayment.get_logs(fromBlock=last_processed_block + 1, toBlock=current_height)
         for log in repayment_logs:
+            owed_before = repayer.remainingLoan(block_identifier=log.blockNumber-1) / 1e18
+            owed_after = repayer.remainingLoan(block_identifier=log.blockNumber) / 1e18
             new_repayments.append({
                 'block': log.blockNumber,
                 'txn': log.transactionHash.hex(),
                 'repayer': log.args.repayer,
                 'amount': log.args.amount / 1e18,
+                'owed_before': owed_before,
+                'owed_after': owed_after,
                 'timestamp': chain[log.blockNumber].timestamp
             })
         
