@@ -397,9 +397,9 @@ def build_withdrawal_feed(current_height):
     print(f"Withdrawal feed: {len(complete_feed)} total entries, {len(truly_new_entries)} new entries")
     return complete_feed
 
-def filter_redundant_checkpoints(history, preserve_latest=True):
+def filter_redundant_checkpoints(history, threshold=150, preserve_latest=True):
     """
-    Filter out checkpoints where amount hasn't changed, keeping only meaningful changes.
+    Filter out checkpoints where amount change is below threshold, keeping only significant changes.
     Always preserves the most recent checkpoint if preserve_latest=True.
     """
     if not history:
@@ -420,13 +420,13 @@ def filter_redundant_checkpoints(history, preserve_latest=True):
             last_amount = current_amount
             continue
         
-        # Add entry if amount has changed
-        if current_amount != last_amount:
+        # Add entry if amount change exceeds threshold
+        if abs(current_amount - last_amount) > threshold:
             filtered.append(entry)
             last_amount = current_amount
     
     # If preserve_latest is True and the latest entry isn't already included,
-    # add it regardless of whether amount changed
+    # add it regardless of whether amount changed significantly
     if preserve_latest and sorted_history:
         latest_entry = sorted_history[-1]
         if not filtered or filtered[-1]['block'] != latest_entry['block']:
