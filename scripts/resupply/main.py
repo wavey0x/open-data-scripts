@@ -397,6 +397,43 @@ def build_withdrawal_feed(current_height):
     print(f"Withdrawal feed: {len(complete_feed)} total entries, {len(truly_new_entries)} new entries")
     return complete_feed
 
+def filter_redundant_checkpoints(history, preserve_latest=True):
+    """
+    Filter out checkpoints where amount hasn't changed, keeping only meaningful changes.
+    Always preserves the most recent checkpoint if preserve_latest=True.
+    """
+    if not history:
+        return history
+    
+    filtered = []
+    last_amount = None
+    
+    # Sort by timestamp to ensure chronological order
+    sorted_history = sorted(history, key=lambda x: x['timestamp'])
+    
+    for entry in sorted_history:
+        current_amount = entry['amount']
+        
+        # Always add the first entry
+        if last_amount is None:
+            filtered.append(entry)
+            last_amount = current_amount
+            continue
+        
+        # Add entry if amount has changed
+        if current_amount != last_amount:
+            filtered.append(entry)
+            last_amount = current_amount
+    
+    # If preserve_latest is True and the latest entry isn't already included,
+    # add it regardless of whether amount changed
+    if preserve_latest and sorted_history:
+        latest_entry = sorted_history[-1]
+        if not filtered or filtered[-1]['block'] != latest_entry['block']:
+            filtered.append(latest_entry)
+    
+    return filtered
+
 def get_loan_repayment_data(current_height):
     """Get loan repayment data with caching for efficiency"""
     if not isinstance(current_height, int):
@@ -530,6 +567,9 @@ def get_loan_repayment_data(current_height):
             i += blocks_in_day  # Daily sampling
     bad_debt_history.append({'amount': pair.totalBorrow(block_identifier=current_height)['amount']/1e18, 'timestamp': chain[current_height].timestamp, 'block': current_height})
         
+    # Filter out redundant checkpoints for bad debt history
+    bad_debt_history = filter_redundant_checkpoints(bad_debt_history)
+
     # Build yearn loan history (load from cache, then add new entries)
     yearn_loan_history = cached_yearn_loan_history.copy()
     max_block = max((entry['block'] for entry in yearn_loan_history), default=0)
@@ -546,6 +586,9 @@ def get_loan_repayment_data(current_height):
         i += blocks_in_day
     yearn_loan_history.append({'amount': repayer.remainingLoan(block_identifier=current_height) / 1e18, 'timestamp': chain[current_height].timestamp, 'block': current_height})
     
+    # Filter out redundant checkpoints for yearn loan history
+    yearn_loan_history = filter_redundant_checkpoints(yearn_loan_history)
+
     # Combine cached and new entries, sort by newest first
     complete_repayments = cached_repayments + new_repayments
     complete_repayments.sort(key=lambda x: x['timestamp'], reverse=True)
