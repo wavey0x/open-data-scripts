@@ -8,7 +8,6 @@ from config import (
     RESUPPLY_DEPLOYER,
     GOV_TOKEN,
     STABLECOIN,
-    RESUPPLY_UTILS,
     get_json_path,
     INSURANCE_POOL,
     RETENTION_PROGRAM,
