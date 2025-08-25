@@ -1,19 +1,14 @@
 [
   {
-    "type": "constructor",
+    "type": "function",
+    "name": "balanceOf",
     "inputs": [
       {
-        "name": "_registry",
+        "name": "_account",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "EXCHANGE_PRECISION",
-    "inputs": [],
     "outputs": [
       {
         "name": "",
@@ -25,7 +20,7 @@
   },
   {
     "type": "function",
-    "name": "INTEREST_RATE_CALCULATORV1",
+    "name": "core",
     "inputs": [],
     "outputs": [
       {
@@ -38,7 +33,7 @@
   },
   {
     "type": "function",
-    "name": "LIQ_PRECISION",
+    "name": "currentRewards",
     "inputs": [],
     "outputs": [
       {
@@ -51,272 +46,12 @@
   },
   {
     "type": "function",
-    "name": "LTV_PRECISION",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "PAIR_DECIMALS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "RATE_PRECISION",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "SHARE_REFACTOR_PRECISION",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "TYPE_DEPOSIT",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "TYPE_SWAP",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "TYPE_UNDEFINED",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "TYPE_WITHDRAW",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "apr",
-    "inputs": [
-      {
-        "name": "_rate",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_priceOfReward",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_priceOfDeposit",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "_apr",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "convexPoolUtil",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getInsurancePoolRewardRates",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "tokens",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "rates",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPairInterestRate",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "_ratePerSecond",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPairRsupRate",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "tokens",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "rates",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getSwapRouteAmountOut",
+    "name": "donate",
     "inputs": [
       {
         "name": "_amount",
         "type": "uint256",
         "internalType": "uint256"
-      },
-      {
-        "name": "_swapper",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_path",
-        "type": "address[]",
-        "internalType": "address[]"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "_returnAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getUnderlyingSupplyRate",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "_rate",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "isSolvent",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_account",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [
@@ -330,47 +65,147 @@
   },
   {
     "type": "function",
-    "name": "isSolventAfterLeverage",
-    "inputs": [
+    "name": "duration",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_maxLTV",
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
-      },
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "earned",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getReward",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getReward",
+    "inputs": [
       {
         "name": "_account",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "_addUnderlying",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_borrowAmount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_slippage",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_swapper",
+        "name": "_forwardTo",
         "type": "address",
         "internalType": "address"
-      },
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getReward",
+    "inputs": [
       {
-        "name": "_path",
-        "type": "address[]",
-        "internalType": "address[]"
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "historicalRewards",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastTimeRewardApplicable",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastUpdateTime",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "periodFinish",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "queueNewRewards",
+    "inputs": [
+      {
+        "name": "_rewards",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -378,45 +213,19 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "pairCollateralRewardRates",
-    "inputs": [
-      {
-        "name": "_pair",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
+    "name": "queuedRewards",
+    "inputs": [],
     "outputs": [
       {
-        "name": "tokens",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "rates",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -436,26 +245,65 @@
   },
   {
     "type": "function",
-    "name": "savingsRate",
+    "name": "rewardPerToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardPerTokenStored",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardRate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rewardRedirect",
     "inputs": [
       {
-        "name": "_vault",
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "ratePerSecond",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "sfrxusd",
+    "name": "rewardToken",
     "inputs": [],
     "outputs": [
       {
@@ -468,41 +316,208 @@
   },
   {
     "type": "function",
-    "name": "sfrxusdRates",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "ratePerSecond",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "sreusd",
-    "inputs": [],
-    "outputs": [
+    "name": "rewards",
+    "inputs": [
       {
         "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "sreusdRates",
-    "inputs": [],
     "outputs": [
       {
-        "name": "ratePerSecond",
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setRewardRedirect",
+    "inputs": [
+      {
+        "name": "_to",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setWeight",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setWeights",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "totalSupply",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "userRewardPerTokenPaid",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "user_checkpoint",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "RewardAdded",
+    "inputs": [
+      {
+        "name": "reward",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RewardPaid",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "reward",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RewardRedirected",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "redirect",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WeightSet",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldWeight",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newWeight",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   }
 ]

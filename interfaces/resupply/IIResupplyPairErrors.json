@@ -68,12 +68,12 @@
   },
   {
     "type": "error",
-    "name": "InvalidLiquidator",
+    "name": "InvalidExchangeRate",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "InvalidOraclePrice",
+    "name": "InvalidLiquidator",
     "inputs": []
   },
   {
