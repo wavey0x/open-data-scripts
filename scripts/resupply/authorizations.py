@@ -4,6 +4,7 @@ from web3 import Web3
 from typing import Optional, Dict
 from brownie import web3, ZERO_ADDRESS, chain, interface
 from .constants import CONTRACTS
+from .contract_names import get_contract_name
 from utils.utils import contract_creation_block
 
 SELECTORS = None
@@ -162,13 +163,17 @@ def get_all_selectors(current_height=None):
     complete_authorizations = cached_authorizations + truly_new_entries
     complete_authorizations.sort(key=lambda x: x['timestamp'], reverse=True)
     
-    # Lookup selectors
+    # Lookup selectors and add contract names
     for entry in complete_authorizations:
         selector_hex = entry['selector'][0]
         signature = lookup_selector(selector_hex)
         if signature is None:
             print(f"Selector {selector_hex} not found in selectors mapping!", flush=True)
         entry['selector'] = (selector_hex, signature)
+        
+        # Add contract names for caller and target
+        entry['caller_name'] = get_contract_name(entry['caller'])
+        entry['target_name'] = get_contract_name(entry['target'])
     
     # Save updated cache
     cache_data = {
