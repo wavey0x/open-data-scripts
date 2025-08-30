@@ -79,7 +79,11 @@ class MarketData:
         self.resupply_borrow_rate = utils.getPairInterestRate.call(pair) * 365 * 86400 / 1e18
         self.resupply_total_collateral = pair.totalCollateral() / 1e18
         oracle = pair.exchangeRateInfo()['oracle']
-        price = Contract(oracle).getPrices(self.market) / 1e18
+        if oracle != ZERO_ADDRESS:
+            price = Contract(oracle).getPrices(self.market) / 1e18
+        else:
+            market.convertToAssets(1e18) / 1e18
+            price = 1e18
         self.resupply_pps = price
         self.resupply_total_supplied = self.resupply_total_collateral * price
         if self.protocol_id == 0:
