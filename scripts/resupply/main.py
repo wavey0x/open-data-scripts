@@ -178,7 +178,7 @@ def get_resupply_pairs_and_collaterals():
     duration = 7 * DAY
     start_ts = current_time - duration
     step_size = DAY / 8
-    steps = duration // step_size + 1
+    steps = int(duration / step_size) + 1
     for i in range(steps):
         ts = min(start_ts + i * step_size, current_time)
         block = closest_block_before_timestamp(ts)
