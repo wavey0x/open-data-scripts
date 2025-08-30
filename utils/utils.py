@@ -91,6 +91,28 @@ def closest_block_before_timestamp(timestamp: int) -> int:
 def get_block_timestamp(height):
     return chain[height].timestamp
 
+def get_block_before_timestamp(timestamp: int) -> int:
+    return get_block_after_timestamp(timestamp) - 1
+
+def get_block_after_timestamp(timestamp: int) -> int:
+    return _closest_block_after_timestamp(web3.eth.chain_id, timestamp)
+
+def _closest_block_after_timestamp(chain_id, timestamp: int) -> int:
+    height = web3.eth.block_number
+    lo, hi = 0, height
+
+    while hi - lo > 1:
+        mid = lo + (hi - lo) // 2
+        if get_block_timestamp(mid) > timestamp:
+            hi = mid
+        else:
+            lo = mid
+
+    if get_block_timestamp(hi) < timestamp:
+        raise Exception("timestamp is in the future")
+    print(f'Chain ID: {chain_id} {hi}')
+    return hi
+
 def timestamp_to_date_string(ts):
     return datetime.utcfromtimestamp(ts).strftime("%m/%d/%Y, %H:%M:%S")
 

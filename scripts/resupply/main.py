@@ -19,13 +19,14 @@ from config import (
     BAD_DEBT_REPAYER
 )
 import requests
-from utils.utils import get_prices
+from utils.utils import get_prices, closest_block_before_timestamp
 from .authorizations import get_all_selectors
 
 registry = Contract(RESUPPLY_REGISTRY)
 deployer = Contract(RESUPPLY_DEPLOYER)
 utils = Contract(UTILITIES)
 rsup_price = 0
+ir_samples_to_check = []
 
 # Global cache for CoinGecko tokens
 COINGECKO_TOKENS = None
@@ -54,6 +55,7 @@ class MarketData:
     resupply_utilization: float
     resupply_available_liquidity: float
     resupply_borrow_rate: float
+    resupply_historical_borrow_rates: list[float]
     resupply_ltv: float
     resupply_rewards_rate: float
 
@@ -77,6 +79,16 @@ class MarketData:
         if self.resupply_borrow_limit > 0:
             self.resupply_utilization = self.resupply_total_debt / self.resupply_borrow_limit
         self.resupply_borrow_rate = utils.getPairInterestRate.call(pair) * 365 * 86400 / 1e18
+        self.resupply_historical_borrow_rates = []
+        for i in range(len(ir_samples_to_check)):
+            historical_rate = utils.getPairInterestRate.call(pair, block_identifier=ir_samples_to_check[i]['block']) * 365 * 86400 / 1e18
+            self.resupply_historical_borrow_rates.append(
+                {
+                    'block': ir_samples_to_check[i]['block'],
+                    'ts': ir_samples_to_check[i]['ts'],
+                    'borrow_rate': historical_rate
+                }
+            )
         self.resupply_total_collateral = pair.totalCollateral() / 1e18
         oracle = pair.exchangeRateInfo()['oracle']
         if oracle != ZERO_ADDRESS:
@@ -161,7 +173,21 @@ class MarketData:
             self.collateral_token_logo = get_token_logo_url(self.collat_token)
 
 def get_resupply_pairs_and_collaterals():
-    global rsup_price 
+    global rsup_price, ir_samples_to_check
+    start_ts = chain.time() - (7 * DAY)
+    step_size = DAY / 2
+    steps = 7 * 2
+    for i in range(steps):
+        block = closest_block_before_timestamp(start_ts + i * step_size)
+        ts = start_ts + i * step_size
+        ir_samples_to_check.append(
+            {
+                'block': block,
+                'ts': ts
+            }
+        )
+        print(f"Added sample {i}: block {block}, ts {ts}")
+    print(f"Total samples: {len(ir_samples_to_check)}")
     rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
     pairs = registry.getAllPairAddresses()
     market_data = []
