@@ -177,9 +177,8 @@ def get_resupply_pairs_and_collaterals():
     start_ts = chain.time() - (7 * DAY)
     step_size = DAY / 2
     steps = 7 * 2 + 1
-    current_time = chain.time()
     for i in range(steps):
-        ts = min(start_ts + i * step_size, current_time)
+        ts = min(start_ts + i * step_size, chain[chain.height].timestamp)
         block = closest_block_before_timestamp(ts)
         ir_samples_to_check.append(
             {
