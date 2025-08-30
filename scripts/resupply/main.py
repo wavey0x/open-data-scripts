@@ -174,11 +174,13 @@ class MarketData:
 
 def get_resupply_pairs_and_collaterals():
     global rsup_price, ir_samples_to_check
-    start_ts = chain.time() - (7 * DAY)
-    step_size = DAY / 2
-    steps = 7 * 2 + 1
+    current_time = chain[chain.height].timestamp
+    duration = 7 * DAY
+    start_ts = current_time - duration
+    step_size = DAY / 8
+    steps = duration // step_size + 1
     for i in range(steps):
-        ts = min(start_ts + i * step_size, chain[chain.height].timestamp)
+        ts = min(start_ts + i * step_size, current_time)
         block = closest_block_before_timestamp(ts)
         ir_samples_to_check.append(
             {
@@ -186,7 +188,6 @@ def get_resupply_pairs_and_collaterals():
                 'ts': ts
             }
         )
-        print(f"Added sample {i}: block {block}, ts {ts}")
     print(f"Total samples: {len(ir_samples_to_check)}")
     rsup_price = get_prices([GOV_TOKEN])[GOV_TOKEN]
     pairs = registry.getAllPairAddresses()
