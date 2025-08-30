@@ -176,7 +176,7 @@ def get_resupply_pairs_and_collaterals():
     global rsup_price, ir_samples_to_check
     start_ts = chain.time() - (7 * DAY)
     step_size = DAY / 2
-    steps = 7 * 2
+    steps = 7 * 2 + 1
     for i in range(steps):
         block = closest_block_before_timestamp(start_ts + i * step_size)
         ts = start_ts + i * step_size
