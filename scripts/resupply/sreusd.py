@@ -1,9 +1,10 @@
-from brownie import chain, interface
+from brownie import chain, interface, Contract
 from config import DAY, UTILITIES, SREUSD
 from utils.utils import closest_block_before_timestamp, contract_creation_block
 
 def get_sreusd_data():
     utils = interface.IUtilities(UTILITIES)
+    sreusd = Contract(SREUSD)
     current_time = int(chain.time())
     deploy_block = contract_creation_block(SREUSD)
     data_points = []
@@ -15,11 +16,13 @@ def get_sreusd_data():
             block = closest_block_before_timestamp(timestamp)
             if block >= deploy_block:
                 rate = utils.sreusdRates(block_identifier=block)
+                total_assets = sreusd.totalAssets(block_identifier=block) / 1e18
                 data_points.append({
                     'block': block,
                     'timestamp': chain[block].timestamp,
                     'rate': rate,
-                    'apr': rate * 365 * 86400 / 1e18
+                    'apr': rate * 365 * 86400 / 1e18,
+                    'total_assets': total_assets
                 })
 
     # Most recent data point
