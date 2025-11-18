@@ -27,11 +27,13 @@ def get_sreusd_data():
 
     # Most recent data point
     rate = utils.sreusdRates()
+    total_assets = sreusd.totalAssets() / 1e18
     data_points.append({
         'block': chain.height,
         'timestamp': current_time,
         'rate': rate,
-        'apr': rate * 365 * 86400 / 1e18
+        'apr': rate * 365 * 86400 / 1e18,
+        'total_assets': total_assets
     })
 
     return data_points
