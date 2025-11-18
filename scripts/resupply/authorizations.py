@@ -33,12 +33,13 @@ def get_function_selector(signature: str) -> str:
 def lookup_selector(selector_hex: str) -> Optional[str]:
     """Look up a function signature by its selector in selectors.json"""
     selectors = get_selectors()
-    
-    # Remove '0x' prefix if present for consistency
-    selector_hex = selector_hex.lower().replace('0x', '')
-    
-    # Return None if selector not found
-    return selectors.get(f"0x{selector_hex}", None)
+
+    # Normalize selector format
+    if not selector_hex.startswith('0x'):
+        selector_hex = f"0x{selector_hex}"
+    selector_hex = selector_hex.lower()
+
+    return selectors.get(selector_hex, None)
 
 def generate_selectors() -> Dict[str, str]:
     """Generate and save selectors from interface JSONs"""
@@ -129,11 +130,8 @@ def get_all_selectors(current_height=None):
         except (json.JSONDecodeError, FileNotFoundError):
             last_processed_block = CORE_DEPLOY_BLOCK
 
-    # Ensure selectors file exists
-    selectors_file = project_root / "data/selectors.json"
-    if not selectors_file.exists():
-        print("Selectors file not found, generating...")
-        generate_selectors()
+    # Load selectors (will use cached version if already loaded)
+    get_selectors()
 
     # Get new events since last processed block
     new_authorizations = []
@@ -172,16 +170,21 @@ def get_all_selectors(current_height=None):
     complete_authorizations.sort(key=lambda x: x['timestamp'], reverse=True)
     
     # Lookup selectors and add contract names
+    missing_selectors = set()
     for entry in complete_authorizations:
         selector_hex = entry['selector'][0]
         signature = lookup_selector(selector_hex)
         if signature is None:
-            print(f"Selector {selector_hex} not found in selectors mapping!", flush=True)
+            missing_selectors.add(selector_hex)
+            signature = ""
         entry['selector'] = (selector_hex, signature)
-        
+
         # Add contract names for caller and target
         entry['caller_name'] = get_contract_name(entry['caller'])
         entry['target_name'] = get_contract_name(entry['target'])
+
+    if missing_selectors:
+        print(f"Warning: {len(missing_selectors)} selectors not found in local cache or 4byte.directory")
     
     # Save updated cache
     cache_data = {

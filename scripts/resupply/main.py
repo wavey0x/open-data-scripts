@@ -690,7 +690,7 @@ def main():
 
     data = {
         'data': {
-            'pairs': market_data,
+            'market_data': market_data,
             'retention_program': retention_data,
             'authorizations': authorizations_data,
             'loan_repayment': loan_repayment_data,
