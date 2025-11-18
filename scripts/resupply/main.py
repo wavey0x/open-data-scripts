@@ -21,6 +21,7 @@ from config import (
 import requests
 from utils.utils import get_prices, closest_block_before_timestamp
 from .authorizations import get_all_selectors
+from .sreusd import get_sreusd_data
 
 registry = Contract(RESUPPLY_REGISTRY)
 deployer = Contract(RESUPPLY_DEPLOYER)
@@ -666,37 +667,41 @@ def get_loan_repayment_data(current_height):
 def main():
     # Initialize CoinGecko tokens cache
     get_coingecko_tokens()
-    
+
     # Get market data
     market_data = get_resupply_pairs_and_collaterals()
-    
+
     # Get Retention Program data
     current_height = chain.height
     retention_data = get_retention_program_data(current_height)
-    
+
     # Get Authorizations data
     authorizations_data = get_all_selectors(current_height)
-    
+
     # Get Loan Repayment data
     loan_repayment_data = get_loan_repayment_data(current_height)
-    
+
+    # Get sreUSD data
+    sreusd_data = get_sreusd_data()
+
     # Add metadata
     current_time = int(time.time())
-    
-    
+
+
     data = {
         'data': market_data,
         'retention_program': retention_data,
         'authorizations': authorizations_data,
         'loan_repayment': loan_repayment_data,
+        'sreusd': sreusd_data,
         'last_update': current_time,
         'last_update_block': current_height,
     }
-    
+
     # Stringify any Contract objects and save
     data_str = stringify_dicts(data)
     save_data_as_json(data_str)
-    
+
     print("Resupply market data saved successfully.")
 
 if __name__ == "__main__":
