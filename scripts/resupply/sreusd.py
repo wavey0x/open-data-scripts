@@ -16,14 +16,18 @@ def get_sreusd_data():
             if block >= deploy_block:
                 rate = utils.sreusdRates(block_identifier=block)
                 data_points.append({
+                    'block': block,
                     'timestamp': chain[block].timestamp,
+                    'rate': rate,
                     'apr': rate * 365 * 86400 / 1e18
                 })
 
     # Most recent data point
     rate = utils.sreusdRates()
     data_points.append({
+        'block': chain.height,
         'timestamp': current_time,
+        'rate': rate,
         'apr': rate * 365 * 86400 / 1e18
     })
 
