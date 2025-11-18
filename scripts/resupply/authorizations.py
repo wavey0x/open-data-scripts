@@ -42,45 +42,49 @@ def lookup_selector(selector_hex: str) -> Optional[str]:
 
 def generate_selectors() -> Dict[str, str]:
     """Generate and save selectors from interface JSONs"""
+    global SELECTORS
     project_root = Path(__file__).resolve().parents[2]
     interfaces_dir = project_root / "interfaces/resupply"
     selectors_file = project_root / "data/selectors.json"
-    
+
     selectors = {}
-    
+
     # Ensure interfaces directory exists
     if not interfaces_dir.exists():
         print(f"Interfaces directory not found at {interfaces_dir}")
         return selectors
-    
+
     # Process each .json file in the interfaces directory
     for json_file in interfaces_dir.glob("*.json"):
         contract_name = json_file.stem
-        
+
         with open(json_file, 'r') as f:
             abi = json.load(f)
-            
+
             # Find all function entries in the ABI
             for item in abi:
                 if item.get('type') == 'function':
                     name = item.get('name')
                     inputs = item.get('inputs', [])
-                    
+
                     # Build function signature
                     param_types = [inp['type'] for inp in inputs]
                     signature = f"{name}({','.join(param_types)})"
-                    
+
                     # Generate and store selector
                     selector = get_function_selector(signature)
                     selectors[selector] = f"{signature}"
-    
+
     # Save selectors to JSON file
     with open(selectors_file, 'w') as f:
         json.dump(selectors, f, indent=2)
-    
+
     print(f"Generated selectors file at {selectors_file}")
     print(f"Found {len(selectors)} function selectors")
-    
+
+    # Update global cache
+    SELECTORS = selectors
+
     return selectors
 
 # Only generate selectors if run directly
@@ -124,8 +128,12 @@ def get_all_selectors(current_height=None):
                 last_processed_block = cache_data.get('last_processed_block', CORE_DEPLOY_BLOCK)
         except (json.JSONDecodeError, FileNotFoundError):
             last_processed_block = CORE_DEPLOY_BLOCK
-    
-    generate_selectors()
+
+    # Ensure selectors file exists
+    selectors_file = project_root / "data/selectors.json"
+    if not selectors_file.exists():
+        print("Selectors file not found, generating...")
+        generate_selectors()
 
     # Get new events since last processed block
     new_authorizations = []

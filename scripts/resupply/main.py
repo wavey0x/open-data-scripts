@@ -689,11 +689,13 @@ def main():
 
 
     data = {
-        'data': market_data,
-        'retention_program': retention_data,
-        'authorizations': authorizations_data,
-        'loan_repayment': loan_repayment_data,
-        'sreusd': sreusd_data,
+        'data': {
+            'pairs': market_data,
+            'retention_program': retention_data,
+            'authorizations': authorizations_data,
+            'loan_repayment': loan_repayment_data,
+            'sreusd': sreusd_data,
+        },
         'last_update': current_time,
         'last_update_block': current_height,
     }
