@@ -13,9 +13,6 @@ import requests
 from utils.utils import get_prices, closest_block_before_timestamp
 from .authorizations import get_all_selectors
 
-registry = Contract(RESUPPLY_REGISTRY)
-utils = Contract(UTILITIES)
-
 def get_sreusd_data():
     sreusd = Contract(SREUSD)
     current_time = int(chain.time())
