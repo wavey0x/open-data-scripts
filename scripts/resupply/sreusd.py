@@ -14,7 +14,7 @@ from utils.utils import get_prices, closest_block_before_timestamp
 from .authorizations import get_all_selectors
 
 def get_sreusd_data():
-    utils = Contract(UTILITIES)
+    utils = interface.IUtilities(UTILITIES)
     current_time = int(chain.time())
     data_points = []
 

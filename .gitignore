@@ -21,3 +21,4 @@ cache
 scripts/charts.py
 /data
 ybs_data.json
+.claude
