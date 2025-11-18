@@ -1,42 +1,24 @@
-from brownie import Contract, chain, ZERO_ADDRESS, interface
-import json
-import os
-import time
-from config import (
-    STABLECOIN,
-    WEEK,
-    DAY,
-    UTILITIES,
-    SREUSD
-)
-import requests
-from utils.utils import get_prices, closest_block_before_timestamp
-from .authorizations import get_all_selectors
+from brownie import chain, interface
+from config import DAY, UTILITIES, SREUSD
+from utils.utils import closest_block_before_timestamp, contract_creation_block
 
 def get_sreusd_data():
     utils = interface.IUtilities(UTILITIES)
     current_time = int(chain.time())
+    deploy_block = contract_creation_block(SREUSD)
     data_points = []
 
     # Sample twice per day (00:00 and 12:00 UTC) for last 30 days
     for day_offset in range(30, 0, -1):
-        day_start = (current_time - (day_offset * DAY)) // DAY * DAY
-
-        # 00:00 UTC
-        block = closest_block_before_timestamp(day_start)
-        rate = utils.sreusdRates(block_identifier=block)
-        data_points.append({
-            'timestamp': chain[block].timestamp,
-            'apr': rate * 365 * 86400 / 1e18
-        })
-
-        # 12:00 UTC
-        block = closest_block_before_timestamp(day_start + DAY // 2)
-        rate = utils.sreusdRates(block_identifier=block)
-        data_points.append({
-            'timestamp': chain[block].timestamp,
-            'apr': rate * 365 * 86400 / 1e18
-        })
+        for hour_offset in [0, 12]:
+            timestamp = (current_time - (day_offset * DAY)) // DAY * DAY + hour_offset * 3600
+            block = closest_block_before_timestamp(timestamp)
+            if block >= deploy_block:
+                rate = utils.sreusdRates(block_identifier=block)
+                data_points.append({
+                    'timestamp': chain[block].timestamp,
+                    'apr': rate * 365 * 86400 / 1e18
+                })
 
     # Most recent data point
     rate = utils.sreusdRates()
