@@ -14,7 +14,7 @@ from utils.utils import get_prices, closest_block_before_timestamp
 from .authorizations import get_all_selectors
 
 def get_sreusd_data():
-    sreusd = Contract(SREUSD)
+    utils = Contract(UTILITIES)
     current_time = int(chain.time())
     data_points = []
 
@@ -24,7 +24,7 @@ def get_sreusd_data():
 
         # 00:00 UTC
         block = closest_block_before_timestamp(day_start)
-        rate = sreusd.sreusdRates(block_identifier=block)
+        rate = utils.sreusdRates(block_identifier=block)
         data_points.append({
             'timestamp': chain[block].timestamp,
             'apr': rate * 365 * 86400 / 1e18
@@ -32,14 +32,14 @@ def get_sreusd_data():
 
         # 12:00 UTC
         block = closest_block_before_timestamp(day_start + DAY // 2)
-        rate = sreusd.sreusdRates(block_identifier=block)
+        rate = utils.sreusdRates(block_identifier=block)
         data_points.append({
             'timestamp': chain[block].timestamp,
             'apr': rate * 365 * 86400 / 1e18
         })
 
     # Most recent data point
-    rate = sreusd.sreusdRates()
+    rate = utils.sreusdRates()
     data_points.append({
         'timestamp': current_time,
         'apr': rate * 365 * 86400 / 1e18
