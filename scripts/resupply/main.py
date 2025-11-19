@@ -394,7 +394,7 @@ def build_withdrawal_feed(current_height):
                     'amount': log.args['assets'] / 1e18,
                     'shares': log.args['shares'] / 1e18,
                     'timestamp': chain[log.blockNumber].timestamp,
-                    'txn_hash': log.transactionHash.hex(),
+                    'txn_hash': '0x' + log.transactionHash.hex(),
                     'ts': log.blockNumber
                 })
     
@@ -555,7 +555,7 @@ def get_loan_repayment_data(current_height):
             owed_after = repayer.remainingLoan(block_identifier=log.blockNumber) / 1e18
             new_repayments.append({
                 'block': log.blockNumber,
-                'txn': log.transactionHash.hex(),
+                'txn': '0x' + log.transactionHash.hex(),
                 'repayer': log.args.repayer,
                 'amount': log.args.amount / 1e18,
                 'owed_before': owed_before,
@@ -568,7 +568,7 @@ def get_loan_repayment_data(current_height):
         for log in bad_debt_logs:
             new_bad_debt_payments.append({
                 'block': log.blockNumber,
-                'txn': log.transactionHash.hex(),
+                'txn': '0x' + log.transactionHash.hex(),
                 'payer': log.args.payer,
                 'amount': log.args.amount / 1e18,
                 'shares': log.args.shares / 1e18,

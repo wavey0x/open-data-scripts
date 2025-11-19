@@ -143,7 +143,7 @@ def get_all_selectors(current_height=None):
             selector_hex = web3.to_hex(log.args.selector)
             new_authorizations.append({
                 'block': log.blockNumber,
-                'txn': log.transactionHash.hex(),
+                'txn': '0x' + log.transactionHash.hex(),
                 'selector': (selector_hex, ""),
                 'caller': log.args.caller,
                 'auth_hook': log.args.authHook,
