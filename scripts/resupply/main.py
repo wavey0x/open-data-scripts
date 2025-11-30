@@ -19,7 +19,12 @@ from config import (
     BAD_DEBT_REPAYER
 )
 import requests
-from utils.utils import get_prices, closest_block_before_timestamp
+from utils.utils import (
+    get_prices,
+    closest_block_before_timestamp,
+    get_token_logo_url,
+    get_coingecko_tokens
+)
 from .authorizations import get_all_selectors
 from .sreusd import get_sreusd_data
 
@@ -28,9 +33,6 @@ deployer = Contract(RESUPPLY_DEPLOYER)
 utils = Contract(UTILITIES)
 rsup_price = 0
 ir_samples_to_check = []
-
-# Global cache for CoinGecko tokens
-COINGECKO_TOKENS = None
 
 class MarketData:
     pair: str
@@ -208,7 +210,7 @@ def stringify_dicts(data):
 def save_data_as_json(data):
     json_file_path = get_json_path(RESUPPLY_JSON_FILE)
     os.makedirs(os.path.dirname(json_file_path), exist_ok=True)
-    
+
     # Remove None values from the data
     def remove_none_values(d):
         if isinstance(d, dict):
@@ -216,68 +218,11 @@ def save_data_as_json(data):
         elif isinstance(d, list):
             return [remove_none_values(v) for v in d if v is not None]
         return d
-    
+
     cleaned_data = remove_none_values(data)
-    
+
     with open(json_file_path, 'w') as file:
         json.dump(cleaned_data, file, indent=4)
-
-def get_coingecko_tokens():
-    global COINGECKO_TOKENS
-    if COINGECKO_TOKENS is not None:
-        return COINGECKO_TOKENS
-        
-    url = f"https://tokens.coingecko.com/uniswap/all.json"
-    max_retries = 3
-    base_delay = 2  # Start with 2 second delay
-    
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(url, timeout=5)
-            
-            if response.status_code == 429:  # Rate limited
-                delay = base_delay * (2 ** attempt)  # Exponential backoff
-                print(f"Rate limited by CoinGecko, waiting {delay} seconds...")
-                time.sleep(delay)
-                continue
-                
-            if response.status_code != 200:
-                print(f"Warning: CoinGecko request failed with status {response.status_code}")
-                return None
-                
-            COINGECKO_TOKENS = response.json()
-            return COINGECKO_TOKENS
-            
-        except (requests.exceptions.RequestException, requests.exceptions.JSONDecodeError) as e:
-            print(f"Warning: Failed to fetch CoinGecko tokens: {str(e)}")
-            if attempt < max_retries - 1:
-                time.sleep(base_delay * (2 ** attempt))
-                continue
-            return None
-            
-    return None
-
-def get_token_logo_url(token_address):
-    try:
-        # First try CoinGecko using cached data
-        if token_address not in [
-            '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E', # crvusd
-            '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0', # wsteth
-        ]:
-            tokens = get_coingecko_tokens()
-            if tokens and 'tokens' in tokens:
-                for token in tokens['tokens']:
-                    if token['address'].lower() == token_address.lower():
-                        return token['logoURI']
-
-        # Fallback to SmolDapp token assets
-        return f"https://assets.smold.app/api/token/1/{token_address}/logo-32.png"
-            
-    except requests.exceptions.RequestException as e:
-        print(f"Warning: Request failed for token {token_address}: {str(e)}")
-        return None
-        
-    return None
 
 def load_retention_snapshot_data():
     snapshot_path = os.path.join(os.path.dirname(__file__), 'data/ip_retention_snapshot.json')

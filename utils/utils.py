@@ -1,9 +1,10 @@
-import constants 
+import constants
 from brownie import ZERO_ADDRESS, Contract, web3, accounts, chain
 import constants, requests, json
 from datetime import datetime
 from functools import lru_cache
 from utils.cache import memory
+import time
 
 DAY = 60 * 60 * 24
 WEEK = DAY * 7
@@ -131,6 +132,70 @@ def get_prices(tokens=[]):
         if t in response:
             prices[t] = response[t]['price']
     return prices
+
+# Global cache for CoinGecko tokens
+_COINGECKO_TOKENS = None
+
+@memory.cache()
+def get_coingecko_tokens():
+    """Fetch CoinGecko token list with caching and retry logic"""
+    global _COINGECKO_TOKENS
+    if _COINGECKO_TOKENS is not None:
+        return _COINGECKO_TOKENS
+
+    url = "https://tokens.coingecko.com/uniswap/all.json"
+    max_retries = 3
+    base_delay = 2
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=5)
+
+            if response.status_code == 429:
+                delay = base_delay * (2 ** attempt)
+                print(f"Rate limited by CoinGecko, waiting {delay} seconds...")
+                time.sleep(delay)
+                continue
+
+            if response.status_code != 200:
+                print(f"Warning: CoinGecko request failed with status {response.status_code}")
+                return None
+
+            _COINGECKO_TOKENS = response.json()
+            return _COINGECKO_TOKENS
+
+        except (requests.exceptions.RequestException, requests.exceptions.JSONDecodeError) as e:
+            print(f"Warning: Failed to fetch CoinGecko tokens: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(base_delay * (2 ** attempt))
+                continue
+            return None
+
+    return None
+
+@memory.cache()
+def get_token_logo_url(token_address):
+    """Get token logo URL from CoinGecko or SmolDapp fallback"""
+    try:
+        # First try CoinGecko using cached data
+        if token_address not in [
+            '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E', # crvusd
+            '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0', # wsteth
+        ]:
+            tokens = get_coingecko_tokens()
+            if tokens and 'tokens' in tokens:
+                for token in tokens['tokens']:
+                    if token['address'].lower() == token_address.lower():
+                        return token['logoURI']
+
+        # Fallback to SmolDapp token assets
+        return f"https://assets.smold.app/api/token/1/{token_address}/logo-32.png"
+
+    except requests.exceptions.RequestException as e:
+        print(f"Warning: Request failed for token {token_address}: {str(e)}")
+        return None
+
+    return None
 
 @memory.cache()
 def get_token_logo_urls(token_address):

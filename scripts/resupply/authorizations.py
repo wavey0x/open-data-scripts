@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import requests
 from web3 import Web3
 from typing import Optional, Dict
 from brownie import web3, ZERO_ADDRESS, chain, interface
@@ -9,44 +10,96 @@ from utils.utils import contract_creation_block
 
 SELECTORS = None
 
+
+def normalize_selector(selector_hex: str) -> str:
+    """Normalize selector strings to 0x-prefixed, lowercase format."""
+    if not selector_hex:
+        return selector_hex
+    selector_hex = selector_hex.lower()
+    if not selector_hex.startswith('0x'):
+        selector_hex = f"0x{selector_hex}"
+    return selector_hex
+
+
+def get_selectors_path() -> Path:
+    """Helper to get selectors.json path."""
+    project_root = Path(__file__).resolve().parents[2]
+    return project_root / "data/selectors.json"
+
 def get_selectors() -> Dict[str, str]:
     """Load the selectors from selectors.json, caching in memory."""
     global SELECTORS
     if SELECTORS is not None:
         return SELECTORS
-    # Determine project root
-    project_root = Path(__file__).resolve().parents[2]
-    selectors_file = project_root / "data/selectors.json"
+    selectors_file = get_selectors_path()
     if not selectors_file.exists():
         SELECTORS = {}
         print("No selectors file found.")
         return SELECTORS
     with open(selectors_file, 'r') as f:
-        SELECTORS = json.load(f)
+        raw_selectors = json.load(f)
+    normalized_selectors = {normalize_selector(k): v for k, v in raw_selectors.items()}
+    if normalized_selectors != raw_selectors:
+        selectors_file.write_text(json.dumps(normalized_selectors, indent=2))
+    SELECTORS = normalized_selectors
     print(f"Loaded {len(SELECTORS)} selectors from {selectors_file}")
     return SELECTORS
 
+
+def save_selectors(selectors: Dict[str, str]) -> None:
+    """Persist selectors to disk and update cache."""
+    global SELECTORS
+    selectors_file = get_selectors_path()
+    selectors_file.parent.mkdir(exist_ok=True)
+    normalized_selectors = {normalize_selector(k): v for k, v in selectors.items()}
+    selectors_file.write_text(json.dumps(normalized_selectors, indent=2))
+    SELECTORS = normalized_selectors
+
 def get_function_selector(signature: str) -> str:
     """Generate function selector from function signature"""
-    return Web3.keccak(text=signature)[:4].hex()
+    return normalize_selector(Web3.keccak(text=signature)[:4].hex())
 
 def lookup_selector(selector_hex: str) -> Optional[str]:
     """Look up a function signature by its selector in selectors.json"""
+    selector_hex = normalize_selector(selector_hex)
     selectors = get_selectors()
+    signature = selectors.get(selector_hex)
+    
+    if signature:
+        return signature
 
-    # Normalize selector format
-    if not selector_hex.startswith('0x'):
-        selector_hex = f"0x{selector_hex}"
-    selector_hex = selector_hex.lower()
+    # Regenerate from local ABIs in case selectors.json is stale
+    selectors = generate_selectors()
+    signature = selectors.get(selector_hex)
+    if signature:
+        return signature
 
-    return selectors.get(selector_hex, None)
+    # Fallback to 4byte API; best-effort, ignore failures
+    try:
+        resp = requests.get(
+            "https://www.4byte.directory/api/v1/signatures/",
+            params={"hex_signature": selector_hex},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if results:
+            signature = results[0].get("text_signature")
+            if signature:
+                selectors[selector_hex] = signature
+                save_selectors(selectors)
+                return signature
+    except Exception as exc:
+        print(f"4byte lookup failed for {selector_hex}: {exc}")
+
+    return None
 
 def generate_selectors() -> Dict[str, str]:
     """Generate and save selectors from interface JSONs"""
     global SELECTORS
     project_root = Path(__file__).resolve().parents[2]
     interfaces_dir = project_root / "interfaces/resupply"
-    selectors_file = project_root / "data/selectors.json"
+    selectors_file = get_selectors_path()
 
     selectors = {}
 
@@ -77,8 +130,7 @@ def generate_selectors() -> Dict[str, str]:
                     selectors[selector] = f"{signature}"
 
     # Save selectors to JSON file
-    with open(selectors_file, 'w') as f:
-        json.dump(selectors, f, indent=2)
+    save_selectors(selectors)
 
     print(f"Generated selectors file at {selectors_file}")
     print(f"Found {len(selectors)} function selectors")
