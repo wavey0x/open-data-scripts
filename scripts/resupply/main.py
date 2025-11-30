@@ -201,6 +201,9 @@ def get_resupply_pairs_and_collaterals():
     return market_data
 
 def stringify_dicts(data):
+    # Unwrap LazyResult / proxy objects before JSON encoding
+    if hasattr(data, "__wrapped__"):
+        return stringify_dicts(data.__wrapped__)
     if isinstance(data, dict):
         return {key: stringify_dicts(value) for key, value in data.items()}
     elif isinstance(data, list):
