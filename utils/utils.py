@@ -173,13 +173,15 @@ def get_coingecko_tokens():
 
     return None
 
-@memory.cache()
 def get_token_logo_url(token_address):
+    """Wrapper to ensure cached function sees simple string inputs."""
+    return _get_token_logo_url_cached(str(token_address))
+
+
+@memory.cache()
+def _get_token_logo_url_cached(token_address: str):
     """Get token logo URL from CoinGecko or SmolDapp fallback"""
     try:
-        # Brownie may pass Address-like proxy objects; ensure cache key is a plain string
-        token_address = str(token_address)
-
         # First try CoinGecko using cached data
         if token_address not in [
             '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E', # crvusd
@@ -200,8 +202,13 @@ def get_token_logo_url(token_address):
 
     return None
 
-@memory.cache()
+
 def get_token_logo_urls(token_address):
+    return _get_token_logo_urls_cached(str(token_address))
+
+
+@memory.cache()
+def _get_token_logo_urls_cached(token_address):
     url = 'https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/coingecko.json'
     data = requests.get(url).json()
     logo_url = ''

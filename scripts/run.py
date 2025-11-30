@@ -1,3 +1,8 @@
+import warnings
+
+# Silence noisy web3/pkg_resources deprecation warning
+warnings.filterwarnings("ignore", category=UserWarning, module="web3")
+
 from scripts.ybs_dash import main as ybs_job
 from scripts.resupply import main as resupply_job
 import os, subprocess, datetime
