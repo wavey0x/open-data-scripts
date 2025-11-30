@@ -177,6 +177,9 @@ def get_coingecko_tokens():
 def get_token_logo_url(token_address):
     """Get token logo URL from CoinGecko or SmolDapp fallback"""
     try:
+        # Brownie may pass Address-like proxy objects; ensure cache key is a plain string
+        token_address = str(token_address)
+
         # First try CoinGecko using cached data
         if token_address not in [
             '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E', # crvusd
@@ -304,4 +307,3 @@ def sql_query_boost_data(sql):
     results = con.execute(sql).fetchdf()
     pd.set_option('display.max_colwidth', None)
     return results
-
