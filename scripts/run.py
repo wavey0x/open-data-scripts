@@ -4,6 +4,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="web3")
 
 from scripts.ybs_dash import main as ybs_job
+from scripts.ybs_dash.listeners import event_listener
 from scripts.resupply import main as resupply_job
 import os, subprocess, datetime
 import shutil
@@ -17,6 +18,7 @@ from config import (
 def main():
     resupply_job.main()
     ybs_job.main()
+    event_listener.main()
 
     destination_dir = '../open-data/'
     os.makedirs(destination_dir, exist_ok=True)

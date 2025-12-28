@@ -71,6 +71,25 @@ class UserInfo(Base):
         UniqueConstraint('account', 'ybs', 'week_id', name='user_info_account_ybs_week_id_key'),
     )
 
+class Rewards(Base):
+    __tablename__ = 'rewards'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ybs = Column(String)
+    reward_distributor = Column(String)
+    is_claim = Column(Boolean)
+    account = Column(String)
+    amount = Column(Numeric(30, 18))
+    week = Column(Integer)
+    txn_hash = Column(String)
+    block = Column(Integer)
+    timestamp = Column(Integer)
+    date_str = Column(String)
+    token = Column(String)
+
+# YBS deploy block for initial sync
+DEPLOY_BLOCK = 19888353
+
 # Define metadata
 metadata = MetaData()
 
@@ -173,3 +192,55 @@ def get_highest_week_id_for_token(token):
         return highest_week_id[0]  # highest_week_id is a tuple, so return the first element
     else:
         return None  # Return None if no rows were found
+
+
+# Event indexer helper functions
+
+def insert_stake(record):
+    """Insert a stake/unstake event record"""
+    session = Session()
+    try:
+        stmt = insert(Stakes).values(**record).on_conflict_do_nothing()
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error inserting stake: {e}")
+    finally:
+        session.close()
+
+def insert_reward(record):
+    """Insert a reward claim/deposit event record"""
+    session = Session()
+    try:
+        stmt = insert(Rewards).values(**record).on_conflict_do_nothing()
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error inserting reward: {e}")
+    finally:
+        session.close()
+
+def get_last_block_for_event(ybs, event_type):
+    """Get the last block written for a specific event type to enable resumption"""
+    session = Session()
+    try:
+        if event_type in ['Staked', 'Unstaked']:
+            is_stake = (event_type == 'Staked')
+            result = session.query(Stakes.block)\
+                .filter(Stakes.ybs == ybs)\
+                .filter(Stakes.is_stake == is_stake)\
+                .order_by(Stakes.block.desc())\
+                .first()
+        else:  # RewardsClaimed, RewardDeposited
+            is_claim = (event_type == 'RewardsClaimed')
+            result = session.query(Rewards.block)\
+                .filter(Rewards.ybs == ybs)\
+                .filter(Rewards.is_claim == is_claim)\
+                .order_by(Rewards.block.desc())\
+                .first()
+
+        return result[0] + 1 if result else DEPLOY_BLOCK
+    finally:
+        session.close()
