@@ -3,6 +3,7 @@ from brownie import Contract
 POOL_PER_TOKEN = {
     '0xFCc5c47bE19d06BF83eB04298b026F81069ff65b': '0x99f5acc8ec2da2bc0771c32814eff52b712de1e5', # yCRV
     '0xe3668873D944E4A949DA05fc8bDE419eFF543882': '0x69833361991ed76f9e8dbbcdf9ea1520febfb4a7', # yPRISMA
+    '0x22222222aEA0076fCA927a3f44dc0B4FdF9479D6': '0x5Ee9606e5611Fd6CE14BD2BC12db70BD53dC9daA', # yYB
 }
 
 def build_data(token, staker_data, swap_size):
