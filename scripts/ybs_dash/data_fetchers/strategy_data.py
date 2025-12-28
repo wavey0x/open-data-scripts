@@ -1,6 +1,11 @@
 from brownie import Contract, ZERO_ADDRESS, chain, interface
 from constants import REGISTRY_V2, REGISTRY_V3, MAX_BPS_EXTENDED, DAY, YEAR
 
+# (token, vault, is_v2)
+VAULT_PER_TOKEN = {
+    '0x22222222aEA0076fCA927a3f44dc0B4FdF9479D6': ('0x1F6f16945e395593d8050d6Cc33e4328a515B648', False), # yYB
+}
+
 def build_data(token, staker_data):
     decimals = staker_data['decimals']
     is_v2, vault = lookup_autocompounder(token)
@@ -40,6 +45,9 @@ def fetch_unsold_rewards(strategy):
     return reward_token, reward_token.balanceOf(strategy)
 
 def lookup_autocompounder(token):
+    if token in VAULT_PER_TOKEN:
+        vault, is_v2 = VAULT_PER_TOKEN[token]
+        return is_v2, Contract(vault)
     registry = None
     try:
         is_v2 = True
