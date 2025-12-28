@@ -3,7 +3,20 @@
     "allow": [
       "Bash(python:*)",
       "Bash(python3:*)",
-      "Bash(brownie run:*)"
+      "Bash(brownie run:*)",
+      "WebFetch(domain:assets.smold.app)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:tokens.1inch.io)",
+      "WebFetch(domain:coin-images.coingecko.com)",
+      "WebFetch(domain:tokens-data.1inch.io)",
+      "WebFetch(domain:icons.llamao.fi)",
+      "WebFetch(domain:storage.googleapis.com)",
+      "WebFetch(domain:api.zerion.io)",
+      "WebFetch(domain:api.coingecko.com)",
+      "WebFetch(domain:token-icons.llamao.fi)",
+      "WebFetch(domain:cdn.paraswap.io)",
+      "WebFetch(domain:etherscan.io)",
+      "WebFetch(domain:token-icons.s3.amazonaws.com)"
     ],
     "deny": [],
     "ask": []

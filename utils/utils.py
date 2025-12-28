@@ -207,8 +207,14 @@ def get_token_logo_urls(token_address):
     return _get_token_logo_urls_cached(str(token_address))
 
 
+TOKEN_LOGO_OVERRIDES = {
+    '0x22222222aEA0076fCA927a3f44dc0B4FdF9479D6': 'https://etherscan.io/token/images/yearn_yyb.png', # yYB
+}
+
 @memory.cache()
 def _get_token_logo_urls_cached(token_address):
+    if token_address in TOKEN_LOGO_OVERRIDES:
+        return TOKEN_LOGO_OVERRIDES[token_address]
     url = 'https://raw.githubusercontent.com/SmolDapp/tokenLists/main/lists/coingecko.json'
     data = requests.get(url).json()
     logo_url = ''
@@ -216,7 +222,8 @@ def _get_token_logo_urls_cached(token_address):
         if token_address == d['address']:
             logo_url = d['logoURI']
             return logo_url
-    return ''
+    # Fallback to SmolDapp
+    return f"https://assets.smold.app/api/token/1/{token_address}/logo-128.png"
 
 def get_ens_from_cache(address):
     ens_data = load_from_json('ens_cache.json')
