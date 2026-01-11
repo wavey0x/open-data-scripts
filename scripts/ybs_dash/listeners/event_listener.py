@@ -8,7 +8,7 @@ import logging
 import os
 
 CURSOR_FILE = get_json_path("ybs_event_cursor.json")
-CHUNK_SIZE = 25_000
+CHUNK_SIZE = 150_000
 
 def main():
     """
