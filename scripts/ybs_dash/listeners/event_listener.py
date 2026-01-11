@@ -1,4 +1,4 @@
-from brownie import chain
+from brownie import chain, network
 from utils import db as db_utils
 from scripts.ybs_dash.main import populate_staker_info
 from datetime import datetime
@@ -8,6 +8,9 @@ def main():
     Single-pass execution. Called by scripts/run.py on ~10min schedule.
     Fetches events since last run (tracked in database).
     """
+    if not network.is_connected():
+        network.connect("mainnet", launch_rpc=False)
+    db_utils.ensure_ybs_schema()
     staker_info = populate_staker_info()
     height = chain.height
 
@@ -64,16 +67,38 @@ def handle_stake_event(log, token, info, is_stake):
     """Process a single Staked or Unstaked event"""
     decimals = info['decimals']
     block = chain[log.blockNumber]
+    max_weeks = info['ybs'].MAX_STAKE_GROWTH_WEEKS()
 
     # Handle both Staked (weightAdded) and Unstaked (weightRemoved) events
     weight_change = log['args'].get('weightAdded') or log['args'].get('weightRemoved', 0)
+    amount = log['args']['amount'] / 10 ** decimals
+    week = log['args']['week']
+    unlock_week = week + max_weeks if is_stake else None
+
+    if is_stake:
+        db_utils.upsert_stake_bucket(token, unlock_week, amount)
+    else:
+        remaining = amount
+        for target_week in range(week + max_weeks, week, -1):
+            bucket_amount = db_utils.get_stake_bucket_amount(token, target_week)
+            if bucket_amount <= 0:
+                continue
+            if bucket_amount >= remaining:
+                db_utils.upsert_stake_bucket(token, target_week, -remaining)
+                remaining = 0
+                break
+            remaining -= bucket_amount
+            db_utils.upsert_stake_bucket(token, target_week, -bucket_amount)
+        if remaining > 0:
+            print(f"Warning: {token} unstake of {remaining} could not be fully bucketed.")
 
     record = {
         'ybs': log.address,
         'account': log['args']['account'],
-        'amount': log['args']['amount'] / 10 ** decimals,
+        'amount': amount,
         'is_stake': is_stake,
-        'week': log['args']['week'],
+        'week': week,
+        'unlock_week': unlock_week,
         'new_weight': log['args']['newUserWeight'] / 10 ** decimals,
         'net_weight_change': weight_change / 10 ** decimals,
         'timestamp': block.timestamp,

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Boolean, Numeric, JSON, UniqueConstraint, select
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Boolean, Numeric, JSON, UniqueConstraint, select, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import insert
@@ -12,9 +12,6 @@ engine = create_engine(os.getenv('DATABASE_URI'))  # Adjust the URL to your data
 
 # Define the base class
 Base = declarative_base()
-# Bind the engine to the metadata of the Base class
-Base.metadata.create_all(engine)
-
 # Create a Session class
 Session = sessionmaker(bind=engine)
 
@@ -29,6 +26,7 @@ class Stakes(Base):
     new_weight = Column(Numeric(30, 18))
     net_weight_change = Column(Numeric(30, 18))
     week = Column(Integer)
+    unlock_week = Column(Integer)
     txn_hash = Column(String)
     block = Column(Integer)
     timestamp = Column(Integer)
@@ -86,6 +84,16 @@ class Rewards(Base):
     timestamp = Column(Integer)
     date_str = Column(String)
     token = Column(String)
+
+class StakeBuckets(Base):
+    __tablename__ = 'stake_buckets'
+
+    token = Column(String, primary_key=True)
+    unlock_week = Column(Integer, primary_key=True)
+    net_amount = Column(Numeric(30, 18))
+
+# Bind the engine to the metadata of the Base class
+Base.metadata.create_all(engine)
 
 # YBS deploy block for initial sync
 DEPLOY_BLOCK = 19888353
@@ -242,5 +250,70 @@ def get_last_block_for_event(ybs, event_type):
                 .first()
 
         return result[0] + 1 if result else DEPLOY_BLOCK
+    finally:
+        session.close()
+
+def ensure_ybs_schema():
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE stakes ADD COLUMN IF NOT EXISTS unlock_week INTEGER"))
+    StakeBuckets.__table__.create(engine, checkfirst=True)
+
+def upsert_stake_bucket(token, unlock_week, delta_amount):
+    session = Session()
+    try:
+        stmt = insert(StakeBuckets).values(
+            token=token,
+            unlock_week=unlock_week,
+            net_amount=delta_amount,
+        ).on_conflict_do_update(
+            index_elements=['token', 'unlock_week'],
+            set_={
+                'net_amount': StakeBuckets.net_amount + insert(StakeBuckets).excluded.net_amount
+            },
+        )
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error upserting stake bucket: {e}")
+    finally:
+        session.close()
+
+def get_stake_bucket_amount(token, unlock_week):
+    session = Session()
+    try:
+        result = session.query(StakeBuckets.net_amount)\
+            .filter(StakeBuckets.token == token)\
+            .filter(StakeBuckets.unlock_week == unlock_week)\
+            .first()
+        return float(result[0]) if result else 0.0
+    finally:
+        session.close()
+
+def clear_stake_buckets(token):
+    session = Session()
+    try:
+        session.query(StakeBuckets)\
+            .filter(StakeBuckets.token == token)\
+            .delete()
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error clearing stake buckets: {e}")
+    finally:
+        session.close()
+
+def backfill_unlock_week(token, max_weeks):
+    session = Session()
+    try:
+        session.query(Stakes)\
+            .filter(Stakes.token == token)\
+            .filter(Stakes.is_stake.is_(True))\
+            .filter(Stakes.unlock_week.is_(None))\
+            .update({Stakes.unlock_week: Stakes.week + max_weeks}, synchronize_session=False)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error backfilling unlock_week: {e}")
     finally:
         session.close()

@@ -1,7 +1,7 @@
 import os
 import time
 import json
-from brownie import Contract, chain
+from brownie import Contract, chain, network
 from dotenv import load_dotenv
 from utils import utils as utilities
 from config import YBS_REGISTRY, YBS_JSON_FILE, get_json_path
@@ -42,6 +42,8 @@ def main():
     save_data_as_json(staker_data_str)
 
 def populate_staker_info():
+    if not network.is_connected():
+        network.connect("mainnet", launch_rpc=False)
     registry = Contract(YBS_REGISTRY)
     num_tokens = registry.numTokens()
     DEPRECATED_TOKENS = [

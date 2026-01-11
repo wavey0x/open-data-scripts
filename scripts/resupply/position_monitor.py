@@ -152,11 +152,15 @@ def fetch_historical_data(pair_address, user, reward_tokens, reusd, prices, samp
     collateral_contract = Contract(pair.collateral())
     asset = collateral_contract.asset()
 
+    pool = Contract('0xc522a6606bba746d7960404f22a3db936b6f4f50')
     collateral_price = prices.get(asset, 1.0)  # Collateral at market price
-    borrow_price = prices.get(reusd, 1.0)  # reUSD at market price
+    # borrow_price = prices.get(reusd, 1.0)  # reUSD at market price
+    # collateral_price = 1
+    # borrow_price = 1
 
     data = []
     for block, timestamp in sample_blocks:
+        borrow_price = 1e18 / pool.price_oracle(0, block_identifier=block)
         # Collateral value at block
         collateral_balance = pair.userCollateralBalance.call(user, block_identifier=block)
         collateral_amount = collateral_contract.convertToAssets(collateral_balance, block_identifier=block) / 1e18
