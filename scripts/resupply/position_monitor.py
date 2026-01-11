@@ -1,22 +1,28 @@
 from brownie import Contract, chain, web3, interface
 from web3._utils.events import construct_event_topic_set
 from utils.utils import get_prices, get_block_timestamp, get_block_before_timestamp
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from datetime import datetime
 import json
 import os
+import logging
+import time
 
 START_BLOCK = 24205787
 SAMPLE_INTERVAL = 6 * 60 * 60  # 6 hours in seconds
 
 def main(output_path=None, meta_path=None, now_ts=None):
+    log = logging.getLogger(__name__)
     if meta_path:
         now_ts = now_ts or datetime.utcnow().timestamp()
         window_start = int(now_ts // SAMPLE_INTERVAL) * SAMPLE_INTERVAL
         if not _should_run_for_window(meta_path, window_start):
-            print(f"Chart generation skipped; window_start {window_start} already processed.")
+            log.info("Chart generation skipped; window_start %s already processed.", window_start)
             return {"skipped": True, "window_start": window_start}
 
+    start = time.monotonic()
     user = '0xe5BcBdf9452af0AB4b042D9d8a3c1E527E26419f'
     reusd = '0x57aB1E0003F623289CD798B1824Be09a793e4Bec'
 
@@ -33,13 +39,13 @@ def main(output_path=None, meta_path=None, now_ts=None):
     }
 
     # Fetch redemption events FIRST (need blocks for sampling)
-    print("Fetching redemption events...")
+    log.info("Fetching redemption events...")
     redemptions = get_redemption_events(list(pairs.values()))
 
     # Get sample blocks (6-hour intervals + redemption blocks)
     redemption_blocks = [(r['block'], r['timestamp']) for r in redemptions]
     sample_blocks = get_sample_blocks(extra_blocks=redemption_blocks)
-    print(f"Sampling {len(sample_blocks)} blocks from {START_BLOCK} to {chain.height}")
+    log.info("Sampling %s blocks from %s to %s", len(sample_blocks), START_BLOCK, chain.height)
 
     # Collect all token addresses for price lookup
     all_tokens = set(reward_tokens.keys())
@@ -51,12 +57,12 @@ def main(output_path=None, meta_path=None, now_ts=None):
 
     # Fetch current prices (used for all historical data)
     prices = get_prices(tokens=list(all_tokens))
-    print(f"Fetched prices for {len(prices)} tokens")
+    log.info("Fetched prices for %s tokens", len(prices))
 
     # Fetch historical data for each position
     historical_data = {}
     for pair_name, pair_address in pairs.items():
-        print(f"Fetching historical data for {pair_name}...")
+        log.info("Fetching historical data for %s...", pair_name)
         historical_data[pair_name] = fetch_historical_data(
             pair_address, user, reward_tokens, reusd, prices, sample_blocks
         )
@@ -74,6 +80,7 @@ def main(output_path=None, meta_path=None, now_ts=None):
     else:
         plt.show()
 
+    log.info("position_monitor complete in %.2fs", time.monotonic() - start)
     return historical_data
 
 
@@ -135,13 +142,13 @@ def get_redemption_events(pair_addresses):
             'amount': event.args['_amount'] / 1e18,
         })
 
-    print(f"Found {len(redemptions)} redemption events")
+    logging.getLogger(__name__).info("Found %s redemption events", len(redemptions))
 
     # Debug: show redemption counts per pair address
     from collections import Counter
     addr_counts = Counter(r['pair_address'].lower() for r in redemptions)
     for addr, count in addr_counts.items():
-        print(f"  {addr}: {count} redemptions")
+        logging.getLogger(__name__).info("  %s: %s redemptions", addr, count)
 
     return redemptions
 
@@ -248,9 +255,10 @@ def print_position_summary(historical_data, reward_tokens, prices):
 def create_historical_charts(historical_data, reward_tokens, redemptions, pairs, prices):
     """Create 3 stacked area charts, one per position, with redemption overlays."""
     import matplotlib.dates as mdates
+    from matplotlib.ticker import FuncFormatter
 
-    # Muted color palette
-    colors = ['#5B8FA8', '#E8A838', '#5CBB7A', '#9B7BB8']
+    # Enhanced color palette with better contrast
+    colors = ['#3D7A9E', '#D4912E', '#4AA366', '#8B6AAF']
 
     # Build reward symbols list and labels with prices
     reward_symbols = list(reward_tokens.values())
@@ -260,7 +268,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         reward_labels_with_prices.append(f'{symbol.upper()} (${price:.4f})')
 
     fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
-    fig.patch.set_facecolor('white')
+    fig.patch.set_facecolor('#FAFAFA')
 
     # Calculate global y-axis bounds across all positions for consistent comparison
     global_min_net_collateral = min(
@@ -277,10 +285,14 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     y_min = min(1000, natural_y_min)  # Floor at 1000 unless data goes lower
     y_max = global_max_total + y_padding
 
+    # Starting value for % change calculation
+    STARTING_VALUE = 1000
+
     legend_handles, legend_labels = None, None
 
     for idx, (pair_name, data) in enumerate(historical_data.items()):
         ax = axes[idx]
+        ax.set_facecolor('#FAFAFA')
         pair_address = pairs[pair_name].lower()
 
         dates = [d['datetime'] for d in data]
@@ -294,16 +306,31 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
             values = [d['rewards'].get(symbol, 0) for d in data]
             y_data.append(values)
 
-        ax.stackplot(dates, *y_data, labels=stack_labels, colors=colors, alpha=0.75)
+        # Stacked area chart
+        ax.stackplot(dates, *y_data, labels=stack_labels, colors=colors, alpha=0.85)
+
+        # Remove x-axis padding (eliminate gap between y-axis and data start)
+        ax.set_xlim(dates[0], dates[-1])
 
         # Capture legend handles once
         if legend_handles is None:
             legend_handles, legend_labels = ax.get_legend_handles_labels()
 
-        # Title with current value
+        # Title with current value and % change from $1000 (inline)
         latest_total = data[-1]['total_usd']
-        ax.set_title(f'{pair_name}  •  ${latest_total:,.2f}', fontsize=10, fontweight='bold', loc='left', pad=8)
-        ax.set_ylabel('USD', fontsize=9, color='#555')
+        pct_change = ((latest_total - STARTING_VALUE) / STARTING_VALUE) * 100
+        pct_color = '#2E7D32' if pct_change > 0 else '#C62828' if pct_change < 0 else '#333'
+        pct_arrow = '+' if pct_change > 0 else ''
+        # Title: pair name (left-aligned, set via set_title), then value + % via text
+        ax.set_title(f'{pair_name}', fontsize=11, fontweight='medium', loc='left', pad=10, color='#333')
+        # Inline value (black) and % change (colorized) next to title
+        title_x = 0.22  # Position after title text
+        ax.text(title_x, 1.02, f'${latest_total:,.0f}', transform=ax.transAxes,
+                fontsize=11, fontweight='bold', ha='left', va='bottom', color='#333')
+        ax.text(title_x + 0.08, 1.02, f'{pct_arrow}{pct_change:.1f}%', transform=ax.transAxes,
+                fontsize=11, fontweight='bold', ha='left', va='bottom', color=pct_color)
+
+        ax.set_ylabel('USD', fontsize=8, color='#888', fontweight='light')
         ax.ticklabel_format(useOffset=False, style='plain', axis='y')
 
         # Use global y-axis bounds for consistent comparison across charts
@@ -318,25 +345,42 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         # Clean up spines
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_color('#ccc')
-        ax.spines['bottom'].set_color('#ccc')
+        ax.spines['left'].set_color('#ddd')
+        ax.spines['bottom'].set_color('#ddd')
+        ax.spines['left'].set_linewidth(0.5)
+        ax.spines['bottom'].set_linewidth(0.5)
 
-        # Light grid
-        ax.grid(True, axis='y', alpha=0.4, linestyle='-', linewidth=0.5, color='#ddd')
+        # Minimal grid
+        ax.grid(True, axis='y', alpha=0.3, linestyle='-', linewidth=0.5, color='#ccc')
         ax.set_axisbelow(True)
-        ax.tick_params(axis='both', labelsize=8, colors='#555')
 
-    # Format x-axis dates
-    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%b %d %H:%M'))
-    axes[-1].xaxis.set_major_locator(mdates.AutoDateLocator())
-    plt.setp(axes[-1].xaxis.get_majorticklabels(), rotation=30, ha='right', fontsize=8)
+        # Typography: lighter axis labels
+        ax.tick_params(axis='y', labelsize=8, colors='#666', width=0.5)
+        ax.tick_params(axis='x', labelsize=7, colors='#666', width=0.5)
 
-    # Single global legend at bottom
-    fig.legend(legend_handles, legend_labels, loc='lower center', ncol=4,
-               fontsize=9, frameon=False, bbox_to_anchor=(0.5, 0.01))
+        # Add legend to top-right of first chart only
+        if idx == 0:
+            ax.legend(
+                loc='upper right', fontsize=8, frameon=True,
+                facecolor='white', edgecolor='#ddd', framealpha=0.95,
+                borderpad=0.5, labelspacing=0.3
+            )
 
-    fig.suptitle('Position Values Over Time', fontsize=13, fontweight='bold', color='#333')
-    plt.tight_layout(rect=[0, 0.06, 1, 0.96])
+    # Custom date formatter: stacked date/time
+    def stacked_date_formatter(x, pos):
+        dt = mdates.num2date(x)
+        return f"{dt.strftime('%b %d')}\n{dt.strftime('%H:%M')}"
+
+    axes[-1].xaxis.set_major_formatter(FuncFormatter(stacked_date_formatter))
+    axes[-1].xaxis.set_major_locator(mdates.AutoDateLocator(minticks=5, maxticks=10))
+    plt.setp(axes[-1].xaxis.get_majorticklabels(), ha='center', fontsize=7, color='#666')
+
+    fig.suptitle(
+        'Position Values Over Time',
+        fontsize=14, fontweight='medium', color='#333', y=0.98
+    )
+    plt.tight_layout(rect=[0, 0.02, 1, 0.95])
+    plt.subplots_adjust(hspace=0.25)
     return fig
 
 
