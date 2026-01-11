@@ -15,7 +15,7 @@ import logging
 import time
 
 START_BLOCK = 24205787
-SAMPLE_INTERVAL = 6 * 60 * 60  # 6 hours in seconds
+SAMPLE_INTERVAL = 60 * 60  # 1 hour in seconds
 CONFIG = {
     "user": "0xe5BcBdf9452af0AB4b042D9d8a3c1E527E26419f",
     "reusd": "0x57aB1E0003F623289CD798B1824Be09a793e4Bec",
@@ -33,6 +33,7 @@ CONFIG = {
         "borrow_oracle": "0xc522a6606bba746d7960404f22a3db936b6f4f50",
         "collateral_oracle": "0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E",
     },
+    "cache_file": "resupply_position_cache.json",
 }
 
 def main(output_path=None, meta_path=None, now_ts=None):
@@ -51,14 +52,29 @@ def main(output_path=None, meta_path=None, now_ts=None):
     pairs = CONFIG["pairs"]
     pools = CONFIG["pools"]
 
-    redemptions = fetch_redemptions(pairs, log)
-    sample_blocks = build_sample_blocks(redemptions, log)
+    cache_path = _get_open_data_path(CONFIG["cache_file"])
+    cache_config = _cache_config(user, reusd, reward_tokens, pairs, pools)
+    cache = _load_cache(cache_path, cache_config)
+    cached_blocks = cache.get("sample_blocks", [])
+    cached_data = cache.get("historical_data", {})
+    cached_redemptions = cache.get("redemptions", [])
+    last_redemption_block = cache.get("last_redemption_block", START_BLOCK - 1)
+
+    new_redemptions = fetch_redemptions(pairs, log, last_redemption_block + 1)
+    redemptions = cached_redemptions + new_redemptions
+    sample_blocks = build_sample_blocks(redemptions, log, cached_blocks)
     prices = load_prices(reward_tokens, reusd, pairs, log)
     historical_data = {}
     for pair_name, pair_address in pairs.items():
         log.info("Fetching historical data for %s...", pair_name)
         historical_data[pair_name] = fetch_pair_history(
-            pair_address, user, reward_tokens, prices, sample_blocks, pools
+            pair_address,
+            user,
+            reward_tokens,
+            prices,
+            sample_blocks,
+            pools,
+            cached_data.get(pair_name, []),
         )
 
     # Print summary table for current block
@@ -84,36 +100,39 @@ def main(output_path=None, meta_path=None, now_ts=None):
     else:
         plt.show()
 
+    _save_cache(cache_path, cache_config, sample_blocks, historical_data, redemptions)
     log.info("position_monitor complete in %.2fs", time.monotonic() - start)
     return historical_data
 
 
-def build_sample_blocks(redemptions, log):
+def build_sample_blocks(redemptions, log, cached_blocks):
     redemption_blocks = [(r["block"], r["timestamp"]) for r in redemptions]
-    sample_blocks = _get_sample_blocks(extra_blocks=redemption_blocks)
+    start_ts = _start_timestamp(cached_blocks)
+    new_blocks = _get_sample_blocks(start_ts=start_ts, extra_blocks=redemption_blocks)
+    merged = cached_blocks + new_blocks
+    sample_blocks = sorted(set((b, t) for b, t in merged), key=lambda x: x[0])
     log.info("Sampling %s blocks from %s to %s", len(sample_blocks), START_BLOCK, chain.height)
     return sample_blocks
 
 
-def _get_sample_blocks(extra_blocks=None):
-    """Generate list of (block, timestamp) tuples from START_BLOCK to now, every 6 hours.
+def _get_sample_blocks(start_ts, extra_blocks=None):
+    """Generate list of (block, timestamp) tuples from start_ts to now, every hour.
 
     Args:
         extra_blocks: Optional list of (block, timestamp) tuples to merge in (e.g., redemption blocks)
     """
-    start_timestamp = get_block_timestamp(START_BLOCK)
     current_block = chain.height
     current_timestamp = get_block_timestamp(current_block)
 
     sample_blocks = []
-    t = start_timestamp
+    t = start_ts
     while t <= current_timestamp:
         block = get_block_before_timestamp(t)
         sample_blocks.append((block, t))
         t += SAMPLE_INTERVAL
 
     # Ensure current block is included as final sample
-    if sample_blocks[-1][0] != current_block:
+    if sample_blocks and sample_blocks[-1][0] != current_block:
         sample_blocks.append((current_block, current_timestamp))
 
     # Merge extra blocks (e.g., redemption blocks)
@@ -125,13 +144,13 @@ def _get_sample_blocks(extra_blocks=None):
     return sample_blocks
 
 
-def fetch_redemptions(pairs, log):
+def fetch_redemptions(pairs, log, from_block):
     log.info("Fetching redemption events...")
-    return _get_redemption_events(list(pairs.values()))
+    return _get_redemption_events(list(pairs.values()), from_block, chain.height)
 
 
-def _get_redemption_events(pair_addresses):
-    """Fetch redemption events for specified pairs from START_BLOCK to now."""
+def _get_redemption_events(pair_addresses, from_block, to_block):
+    """Fetch redemption events for specified pairs from from_block to to_block."""
     contract = web3.eth.contract(pair_addresses[0], abi=interface.IResupplyPair.abi)
     topics = construct_event_topic_set(
         contract.events.Redeemed().abi,
@@ -140,8 +159,8 @@ def _get_redemption_events(pair_addresses):
     )
 
     logs = web3.eth.get_logs({
-        'fromBlock': START_BLOCK,
-        'toBlock': chain.height,
+        'fromBlock': from_block,
+        'toBlock': to_block,
         'topics': topics,
         'address': pair_addresses
     })
@@ -181,7 +200,7 @@ def load_prices(reward_tokens, reusd, pairs, log):
     return prices
 
 
-def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks, pools):
+def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks, pools, cached_records):
     """Fetch position data at each sample block for a single pair."""
     pair = Contract(pair_address)
     collateral_contract = Contract(pair.collateral())
@@ -194,8 +213,11 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
     # collateral_price = 1
     # borrow_price = 1
 
-    data = []
+    data = list(cached_records)
+    seen_blocks = {d["block"] for d in data}
     for block, timestamp in sample_blocks:
+        if block in seen_blocks:
+            continue
         borrow_price = 1e18 / pool.price_oracle(0, block_identifier=block)
         collateral_price = crvusd_usdc_pool.price_oracle(block_identifier=block) / 1e18
         # Collateral value at block
@@ -426,6 +448,113 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     plt.tight_layout(rect=[0, 0.02, 1, 0.92])
     plt.subplots_adjust(hspace=0.25)
     return fig
+
+
+def _get_open_data_path(filename):
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    open_data_root = os.path.abspath(os.path.join(repo_root, "..", "open-data"))
+    return os.path.join(open_data_root, filename)
+
+
+def _cache_config(user, reusd, reward_tokens, pairs, pools):
+    return {
+        "user": user,
+        "reusd": reusd,
+        "reward_tokens": reward_tokens,
+        "pairs": pairs,
+        "pools": pools,
+        "start_block": START_BLOCK,
+        "sample_interval": SAMPLE_INTERVAL,
+    }
+
+
+def _load_cache(cache_path, cache_config):
+    if not os.path.exists(cache_path):
+        return {}
+    try:
+        with open(cache_path, "r") as handle:
+            payload = json.load(handle)
+        if payload.get("cache_version") != 1:
+            return {}
+        if payload.get("config") != cache_config:
+            return {}
+        historical_data = _deserialize_history(payload.get("historical_data", {}))
+        redemptions = _deserialize_redemptions(payload.get("redemptions", []))
+        sample_blocks = sorted(payload.get("sample_blocks", []), key=lambda x: x[0])
+        return {
+            "sample_blocks": sample_blocks,
+            "historical_data": historical_data,
+            "redemptions": redemptions,
+            "last_redemption_block": payload.get("last_redemption_block", START_BLOCK - 1),
+        }
+    except (json.JSONDecodeError, OSError, ValueError):
+        return {}
+
+
+def _save_cache(cache_path, cache_config, sample_blocks, historical_data, redemptions):
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    last_redemption_block = max((r["block"] for r in redemptions), default=START_BLOCK - 1)
+    payload = {
+        "cache_version": 1,
+        "config": cache_config,
+        "sample_blocks": [[b, t] for b, t in sample_blocks],
+        "historical_data": _serialize_history(historical_data),
+        "redemptions": _serialize_redemptions(redemptions),
+        "last_redemption_block": last_redemption_block,
+    }
+    with open(cache_path, "w") as handle:
+        json.dump(payload, handle, indent=2)
+
+
+def _serialize_history(historical_data):
+    serialized = {}
+    for pair_name, records in historical_data.items():
+        serialized[pair_name] = [_serialize_record(record) for record in records]
+    return serialized
+
+
+def _deserialize_history(historical_data):
+    deserialized = {}
+    for pair_name, records in historical_data.items():
+        deserialized[pair_name] = [_deserialize_record(record) for record in records]
+    return deserialized
+
+
+def _serialize_record(record):
+    clean = dict(record)
+    clean.pop("datetime", None)
+    return clean
+
+
+def _deserialize_record(record):
+    rebuilt = dict(record)
+    rebuilt["datetime"] = datetime.fromtimestamp(record["timestamp"])
+    return rebuilt
+
+
+def _serialize_redemptions(redemptions):
+    serialized = []
+    for redemption in redemptions:
+        clean = dict(redemption)
+        clean.pop("datetime", None)
+        serialized.append(clean)
+    return serialized
+
+
+def _deserialize_redemptions(redemptions):
+    deserialized = []
+    for redemption in redemptions:
+        rebuilt = dict(redemption)
+        rebuilt["datetime"] = datetime.fromtimestamp(redemption["timestamp"])
+        deserialized.append(rebuilt)
+    return deserialized
+
+
+def _start_timestamp(cached_blocks):
+    if not cached_blocks:
+        return get_block_timestamp(START_BLOCK)
+    last_timestamp = cached_blocks[-1][1]
+    return last_timestamp + SAMPLE_INTERVAL
 
 
 def _should_run_for_window(meta_path, output_path, window_start):
