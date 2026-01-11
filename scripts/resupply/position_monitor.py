@@ -40,9 +40,9 @@ def main(output_path=None, meta_path=None, now_ts=None):
     if meta_path:
         now_ts = now_ts or datetime.utcnow().timestamp()
         window_start = int(now_ts // SAMPLE_INTERVAL) * SAMPLE_INTERVAL
-        if not _should_run_for_window(meta_path, output_path, window_start):
-            log.info("Chart generation skipped; window_start %s already processed.", window_start)
-            return {"skipped": True, "window_start": window_start}
+        # if not _should_run_for_window(meta_path, output_path, window_start):
+        #     log.info("Chart generation skipped; window_start %s already processed.", window_start)
+        #     return {"skipped": True, "window_start": window_start}
 
     start = time.monotonic()
     user = CONFIG["user"]
@@ -419,8 +419,12 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
 
 
 def _should_run_for_window(meta_path, output_path, window_start):
-    if output_path and not os.path.exists(output_path):
-        return True
+    if output_path:
+        try:
+            if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                return True
+        except OSError:
+            return True
     if not os.path.exists(meta_path):
         return True
     try:

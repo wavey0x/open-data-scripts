@@ -26,13 +26,18 @@ def main():
     log.info("run.py start")
     resupply_job.main()
     log.info("resupply_job.main complete")
-    destination_dir = '../open-data/'
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    destination_dir = os.path.abspath(os.path.join(base_dir, "..", "open-data"))
     os.makedirs(destination_dir, exist_ok=True)
 
     chart_dir = os.path.join(destination_dir, "charts")
     chart_path = os.path.join(chart_dir, "resupply_positions.png")
     meta_path = os.path.join(chart_dir, "resupply_positions_meta.json")
+    log.info("Chart output path: %s", chart_path)
+    log.info("Chart meta path: %s", meta_path)
     position_monitor.main(output_path=chart_path, meta_path=meta_path)
+    if not os.path.exists(chart_path):
+        log.warning("Chart not found after generation: %s", chart_path)
     log.info("position_monitor.main complete")
     ybs_job.main()
     log.info("ybs_job.main complete")
