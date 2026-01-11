@@ -69,7 +69,17 @@ def main(output_path=None, meta_path=None, now_ts=None):
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         fig.savefig(output_path, dpi=150)
-        _write_meta(meta_path, now_ts or datetime.utcnow().timestamp(), output_path)
+        latest_block = sample_blocks[-1][0] if sample_blocks else chain.height
+        _write_meta(
+            meta_path,
+            now_ts or datetime.utcnow().timestamp(),
+            output_path,
+            user,
+            pairs,
+            reward_tokens,
+            prices,
+            latest_block,
+        )
         plt.close(fig)
     else:
         plt.show()
@@ -435,7 +445,7 @@ def _should_run_for_window(meta_path, output_path, window_start):
         return True
 
 
-def _write_meta(meta_path, now_ts, output_path):
+def _write_meta(meta_path, now_ts, output_path, user, pairs, reward_tokens, prices, latest_block):
     if not meta_path:
         return
     os.makedirs(os.path.dirname(meta_path), exist_ok=True)
@@ -445,6 +455,11 @@ def _write_meta(meta_path, now_ts, output_path):
         "window_start": window_start,
         "window_interval": SAMPLE_INTERVAL,
         "image_path": os.path.basename(output_path),
+        "latest_block": latest_block,
+        "user": user,
+        "pairs": pairs,
+        "reward_tokens": reward_tokens,
+        "prices": prices,
     }
     with open(meta_path, "w") as handle:
         json.dump(payload, handle, indent=2)

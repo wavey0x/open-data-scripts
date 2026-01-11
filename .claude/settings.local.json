@@ -16,7 +16,14 @@
       "WebFetch(domain:token-icons.llamao.fi)",
       "WebFetch(domain:cdn.paraswap.io)",
       "WebFetch(domain:etherscan.io)",
-      "WebFetch(domain:token-icons.s3.amazonaws.com)"
+      "WebFetch(domain:token-icons.s3.amazonaws.com)",
+      "Bash(gh api:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
