@@ -40,9 +40,9 @@ def main(output_path=None, meta_path=None, now_ts=None):
     if meta_path:
         now_ts = now_ts or datetime.utcnow().timestamp()
         window_start = int(now_ts // SAMPLE_INTERVAL) * SAMPLE_INTERVAL
-        # if not _should_run_for_window(meta_path, output_path, window_start):
-        #     log.info("Chart generation skipped; window_start %s already processed.", window_start)
-        #     return {"skipped": True, "window_start": window_start}
+        if not _should_run_for_window(meta_path, output_path, window_start):
+            log.info("Chart generation skipped; window_start %s already processed.", window_start)
+            return {"skipped": True, "window_start": window_start}
 
     start = time.monotonic()
     user = CONFIG["user"]
