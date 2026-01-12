@@ -42,7 +42,8 @@ SHOW_REUSD_PRICE = True
 
 def main(output_path=None, meta_path=None, now_ts=None):
     log = logging.getLogger(__name__)
-    if meta_path:
+    force_regen = os.getenv("FORCE_CHART_REGEN", "").lower() in ("true", "1", "yes")
+    if meta_path and not force_regen:
         now_ts = now_ts or datetime.utcnow().timestamp()
         window_start = int(now_ts // SAMPLE_INTERVAL) * SAMPLE_INTERVAL
         if not _should_run_for_window(meta_path, output_path, window_start):
