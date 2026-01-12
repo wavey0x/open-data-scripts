@@ -43,6 +43,7 @@ SHOW_REUSD_PRICE = True
 def main(output_path=None, meta_path=None, now_ts=None):
     log = logging.getLogger(__name__)
     force_regen = os.getenv("FORCE_CHART_REGEN", "").lower() in ("true", "1", "yes")
+    force_cache_rebuild = os.getenv("FORCE_CACHE_REBUILD", "").lower() in ("true", "1", "yes")
     if meta_path and not force_regen:
         now_ts = now_ts or datetime.utcnow().timestamp()
         window_start = int(now_ts // SAMPLE_INTERVAL) * SAMPLE_INTERVAL
@@ -59,7 +60,11 @@ def main(output_path=None, meta_path=None, now_ts=None):
 
     cache_path = _get_open_data_path(CONFIG["cache_file"])
     cache_config = _cache_config(user, reusd, reward_tokens, pairs, pools)
-    cache = _load_cache(cache_path, cache_config)
+    if force_cache_rebuild:
+        log.info("FORCE_CACHE_REBUILD enabled; ignoring existing cache")
+        cache = {}
+    else:
+        cache = _load_cache(cache_path, cache_config)
     cached_blocks = cache.get("sample_blocks", [])
     cached_data = cache.get("historical_data", {})
     cached_redemptions = cache.get("redemptions", [])
