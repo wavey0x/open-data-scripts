@@ -36,6 +36,10 @@ CONFIG = {
     "cache_file": "resupply_position_cache.json",
 }
 
+# Toggle to show/hide price overlays on charts
+SHOW_CRVUSD_PRICE = False
+SHOW_REUSD_PRICE = True
+
 def main(output_path=None, meta_path=None, now_ts=None):
     log = logging.getLogger(__name__)
     if meta_path:
@@ -100,7 +104,8 @@ def main(output_path=None, meta_path=None, now_ts=None):
     else:
         plt.show()
 
-    _save_cache(cache_path, cache_config, sample_blocks, historical_data, redemptions)
+    if os.getenv("ENVIRONMENT") != "dev":
+        _save_cache(cache_path, cache_config, sample_blocks, historical_data, redemptions)
     log.info("position_monitor complete in %.2fs", time.monotonic() - start)
     return historical_data
 
@@ -219,7 +224,8 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
         if block in seen_blocks:
             continue
         borrow_price = 1e18 / pool.price_oracle(0, block_identifier=block)
-        collateral_price = crvusd_usdc_pool.price_oracle(block_identifier=block) / 1e18
+        collateral_price = 1#crvusd_usdc_pool.price_oracle(block_identifier=block) / 1e18
+        # print(collateral_price)
         # Collateral value at block
         collateral_balance = pair.userCollateralBalance.call(user, block_identifier=block)
         collateral_amount = collateral_contract.convertToAssets(collateral_balance, block_identifier=block) / 1e18
@@ -342,6 +348,34 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     y_min = min(1000, natural_y_min)  # Floor at 1000 unless data goes lower
     y_max = global_max_total + y_padding
 
+    # Calculate price y-axis bounds (auto-scaled to actual data, shared for both overlays)
+    price_y_min, price_y_max = None, None
+    if SHOW_CRVUSD_PRICE or SHOW_REUSD_PRICE:
+        all_prices = []
+        if SHOW_CRVUSD_PRICE:
+            all_prices.extend([
+                d['collateral_price']
+                for data in historical_data.values()
+                for d in data
+            ])
+        if SHOW_REUSD_PRICE:
+            all_prices.extend([
+                d['borrow_price']
+                for data in historical_data.values()
+                for d in data
+            ])
+        price_min = min(all_prices)
+        price_max = max(all_prices)
+        price_range = price_max - price_min or 0.001  # Avoid zero range
+        price_padding = price_range * 0.15
+        price_y_min = price_min - price_padding
+        price_y_max = price_max + price_padding
+        # Ensure 1.0 is included if close to data range
+        if price_y_max < 1.0 < price_y_max + price_range:
+            price_y_max = 1.0 + price_padding
+        if price_y_min > 1.0 > price_y_min - price_range:
+            price_y_min = 1.0 - price_padding
+
     # Starting value for % change calculation
     STARTING_VALUE = 1000
 
@@ -376,9 +410,53 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         # Remove x-axis padding (eliminate gap between y-axis and data start)
         ax.set_xlim(dates[0], dates[-1])
 
+        # Secondary y-axis for price overlays (crvUSD and/or reUSD)
+        if SHOW_CRVUSD_PRICE or SHOW_REUSD_PRICE:
+            ax2 = ax.twinx()
+            # Ensure ax2 renders on top of ax
+            ax2.set_zorder(ax.get_zorder() + 1)
+            ax2.patch.set_visible(False)  # Keep background transparent
+
+            if SHOW_CRVUSD_PRICE:
+                collateral_prices = [d['collateral_price'] for d in data]
+                ax2.plot(dates, collateral_prices, color='#888888', linestyle='--',
+                         linewidth=1.2, alpha=0.9, label='crvUSD Price', zorder=10)
+
+            if SHOW_REUSD_PRICE:
+                borrow_prices = [d['borrow_price'] for d in data]
+                ax2.plot(dates, borrow_prices, color='#32CD32', linestyle='--',
+                         linewidth=1.2, alpha=0.9, label='reUSD Price', zorder=10)
+
+            ax2.set_ylim(price_y_min, price_y_max)
+            ax2.ticklabel_format(useOffset=False, style='plain', axis='y')
+
+            # Set axis label based on which overlays are enabled (always dark gray)
+            if SHOW_CRVUSD_PRICE and SHOW_REUSD_PRICE:
+                ax2.set_ylabel('Price', fontsize=8, color='#555555', fontweight='light')
+            elif SHOW_REUSD_PRICE:
+                ax2.set_ylabel('reUSD Price', fontsize=8, color='#555555', fontweight='light')
+            else:
+                ax2.set_ylabel('crvUSD Price', fontsize=8, color='#555555', fontweight='light')
+            ax2.tick_params(axis='y', labelsize=7, colors='#555555', width=0.5)
+            ax2.spines['right'].set_color('#555555')
+
+            ax2.spines['right'].set_linewidth(0.5)
+            # Reference line at 1.0 (peg)
+            ax2.axhline(y=1.0, color='#AAAAAA', linestyle=':', linewidth=0.5, alpha=0.4, zorder=9)
+
         # Capture legend handles once
         if legend_handles is None:
             legend_handles, legend_labels = ax.get_legend_handles_labels()
+            if SHOW_CRVUSD_PRICE:
+                price_line = Line2D([0], [0], color='#888888', linestyle='--',
+                                    linewidth=1.2, alpha=0.9, label='crvUSD Price')
+                legend_handles.append(price_line)
+                legend_labels.append('crvUSD Price')
+            if SHOW_REUSD_PRICE:
+                price_line = Line2D([0], [0], color='#32CD32', linestyle='--',
+                                    linewidth=1.2, alpha=0.9, label='reUSD Price')
+                legend_handles.append(price_line)
+                legend_labels.append('reUSD Price')
 
         # Title with current value and % change from $1000 (centered)
         latest_total = data[-1]['total_usd']
@@ -386,7 +464,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         pct_arrow = '+' if pct_change > 0 else ''
         pct_str = f'({pct_arrow}{pct_change:.1f}%)'
         ax.set_title(
-            f'{pair_name}   ·   Current Value ${latest_total:,.0f} {pct_str}',
+            f'{pair_name}   ·   Current Value ${latest_total:,.2f} {pct_str}',
             fontsize=11, fontweight='medium', loc='center', pad=8, color='#333'
         )
 
@@ -399,7 +477,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         # Draw redemption event lines for this pair
         pair_redemptions = [r for r in redemptions if r['pair_address'].lower() == pair_address]
         for redemption in pair_redemptions:
-            ax.axvline(x=redemption['datetime'], color='#E74C3C', linestyle='--',
+            ax.axvline(x=redemption['datetime'], color='#A94442', linestyle='--',
                        linewidth=1, alpha=0.8)
 
         # Clean up spines
@@ -434,7 +512,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     )
 
     # Add figure-level legend above all charts
-    redemption_line = Line2D([0], [0], color='#E74C3C', linestyle='--',
+    redemption_line = Line2D([0], [0], color='#A94442', linestyle='--',
                              linewidth=1, alpha=0.8, label='Redemption')
     legend_handles.append(redemption_line)
     legend_labels.append('Redemption')

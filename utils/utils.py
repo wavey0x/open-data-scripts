@@ -111,7 +111,7 @@ def _closest_block_after_timestamp(chain_id, timestamp: int) -> int:
 
     if get_block_timestamp(hi) < timestamp:
         raise Exception("timestamp is in the future")
-    print(f'Chain ID: {chain_id} {hi}')
+    # print(f'Chain ID: {chain_id} {hi}')
     return hi
 
 def timestamp_to_date_string(ts):
