@@ -13,6 +13,7 @@ from datetime import datetime
 import json
 import logging
 import time
+from functools import lru_cache
 
 START_BLOCK = 24205787
 SAMPLE_INTERVAL = 60 * 60  # 1 hour in seconds
@@ -146,28 +147,72 @@ def main(output_path=None, meta_path=None, now_ts=None):
 def build_sample_blocks(redemptions, log, cached_blocks):
     redemption_blocks = [(r["block"], r["timestamp"]) for r in redemptions]
     start_ts = _start_timestamp(cached_blocks)
-    new_blocks = _get_sample_blocks(start_ts=start_ts, extra_blocks=redemption_blocks)
+    new_blocks = _get_sample_blocks(start_ts=start_ts, extra_blocks=redemption_blocks, log=log)
     merged = cached_blocks + new_blocks
     sample_blocks = sorted(set((b, t) for b, t in merged), key=lambda x: x[0])
     log.info("Sampling %s blocks from %s to %s", len(sample_blocks), START_BLOCK, chain.height)
     return sample_blocks
 
 
-def _get_sample_blocks(start_ts, extra_blocks=None):
+@lru_cache(maxsize=50_000)
+def _block_timestamp_cached(height: int) -> int:
+    # Brownie's chain[] is convenient but can be slow with repeated remote lookups; memoize per run.
+    return chain[int(height)].timestamp
+
+
+def _closest_block_after_timestamp_bounded(timestamp: int, lo: int, hi: int) -> int:
+    """Return the smallest block number in (lo, hi] whose timestamp is strictly > timestamp."""
+    lo = int(lo)
+    hi = int(hi)
+    while hi - lo > 1:
+        mid = lo + (hi - lo) // 2
+        if _block_timestamp_cached(mid) > timestamp:
+            hi = mid
+        else:
+            lo = mid
+    if _block_timestamp_cached(hi) < timestamp:
+        raise Exception("timestamp is in the future")
+    return hi
+
+
+def _get_sample_blocks(start_ts, extra_blocks=None, log=None):
     """Generate list of (block, timestamp) tuples from start_ts to now, every hour.
 
     Args:
         extra_blocks: Optional list of (block, timestamp) tuples to merge in (e.g., redemption blocks)
     """
+    log = log or logging.getLogger(__name__)
     current_block = chain.height
-    current_timestamp = get_block_timestamp(current_block)
+    current_timestamp = _block_timestamp_cached(current_block)
 
     sample_blocks = []
     t = start_ts
+    # Because timestamps are monotonically increasing, each successive search can be bounded
+    # by the previously found block to reduce RPC calls.
+    lo_block = max(0, START_BLOCK - 1)
+    total_steps = int(max(0, (current_timestamp - start_ts)) // SAMPLE_INTERVAL) + 1
+    steps_done = 0
+    last_progress = time.monotonic()
     while t <= current_timestamp:
-        block = get_block_before_timestamp(t)
+        block_after = _closest_block_after_timestamp_bounded(int(t), lo_block, current_block)
+        block = block_after - 1
         sample_blocks.append((block, t))
         t += SAMPLE_INTERVAL
+        lo_block = block_after
+        steps_done += 1
+
+        now = time.monotonic()
+        if (now - last_progress) >= PROGRESS_LOG_INTERVAL_SECS:
+            pct = 100.0 * steps_done / max(1, total_steps)
+            log.info(
+                "Sample block progress: %s/%s (%.1f%%) last_block=%s last_ts=%s",
+                steps_done,
+                total_steps,
+                pct,
+                block,
+                int(t - SAMPLE_INTERVAL),
+            )
+            last_progress = now
 
     # Ensure current block is included as final sample
     if sample_blocks and sample_blocks[-1][0] != current_block:
@@ -429,9 +474,9 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     # Stack order is: net collateral, then rewards in CONFIG["reward_tokens"] insertion order.
     NET_COLLATERAL_COLOR = '#E6E6E6'  # very light gray
     REWARD_COLOR_BY_SYMBOL = {
-        'rsup': '#7B3FE4',  # purple
-        'crv': '#FF7F0E',   # orange
-        'cvx': '#D62728',   # red
+        'rsup': '#9B6CF0',  # lighter purple
+        'crv': '#FFA24A',   # lighter orange
+        'cvx': '#E35D5B',   # lighter red
     }
     REUSD_PRICE_COLOR = '#4CAF50'  # lighter green for contrast
     REDEMPTION_VLINE_COLOR = '#555555'  # dark grey
@@ -462,9 +507,8 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         for data in historical_data.values()
     )
     value_range = global_max_total - global_min_net_collateral
-    y_padding = value_range * 0.1 or 1
-    natural_y_min = global_min_net_collateral - y_padding
-    y_min = min(1000, natural_y_min)  # Floor at 1000 unless data goes lower
+    y_padding = (value_range * 0.01) if value_range else 1.0  # 1% padding
+    y_min = global_min_net_collateral - y_padding
     y_max = global_max_total + y_padding
 
     # Calculate price y-axis bounds (auto-scaled to actual data, shared for both overlays)
@@ -483,17 +527,14 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
                 for data in historical_data.values()
                 for d in data
             ])
+        # Keep the 1.0 peg line in-frame even if prices drift slightly away.
+        all_prices.append(1.0)
         price_min = min(all_prices)
         price_max = max(all_prices)
         price_range = price_max - price_min or 0.001  # Avoid zero range
-        price_padding = price_range * 0.15
+        price_padding = price_range * 0.01  # 1% padding
         price_y_min = price_min - price_padding
         price_y_max = price_max + price_padding
-        # Ensure 1.0 is included if close to data range
-        if price_y_max < 1.0 < price_y_max + price_range:
-            price_y_max = 1.0 + price_padding
-        if price_y_min > 1.0 > price_y_min - price_range:
-            price_y_min = 1.0 - price_padding
 
     # Starting value for % change calculation
     STARTING_VALUE = 1000
