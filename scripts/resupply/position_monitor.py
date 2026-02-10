@@ -427,7 +427,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
 
     # Chart palette (requested)
     # Stack order is: net collateral, then rewards in CONFIG["reward_tokens"] insertion order.
-    NET_COLLATERAL_COLOR = '#1F77B4'  # blue
+    NET_COLLATERAL_COLOR = '#E6E6E6'  # very light gray
     REWARD_COLOR_BY_SYMBOL = {
         'rsup': '#7B3FE4',  # purple
         'crv': '#FF7F0E',   # orange
@@ -435,7 +435,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     }
     REUSD_PRICE_COLOR = '#4CAF50'  # lighter green for contrast
     REDEMPTION_VLINE_COLOR = '#555555'  # dark grey
-    GOV_PROPOSAL_16_VLINE_COLOR = '#F1C40F'  # yellow
+    GOV_PROPOSAL_16_VLINE_COLOR = '#1F77B4'  # blue
 
     # Build reward symbols list and labels with prices
     reward_symbols = list(reward_tokens.values())
