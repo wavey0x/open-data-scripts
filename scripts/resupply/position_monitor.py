@@ -16,6 +16,9 @@ import time
 
 START_BLOCK = 24205787
 SAMPLE_INTERVAL = 60 * 60  # 1 hour in seconds
+GOV_PROPOSAL_16_BLOCK = 24387728
+REDEMPTION_LOG_CHUNK_BLOCKS = 50_000  # provider-friendly; also gives visible progress
+PROGRESS_LOG_INTERVAL_SECS = 15.0  # rate-limit progress logs to avoid spam
 CONFIG = {
     "user": "0xe5BcBdf9452af0AB4b042D9d8a3c1E527E26419f",
     "reusd": "0x57aB1E0003F623289CD798B1824Be09a793e4Bec",
@@ -41,6 +44,13 @@ SHOW_CRVUSD_PRICE = False
 SHOW_REUSD_PRICE = True
 
 def main(output_path=None, meta_path=None, now_ts=None):
+    # Brownie sometimes doesn't configure logging handlers for script loggers.
+    # Configure a simple root handler only if nothing is set up yet.
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        )
     log = logging.getLogger(__name__)
     force_regen = os.getenv("FORCE_CHART_REGEN", "").lower() in ("true", "1", "yes")
     force_cache_rebuild = os.getenv("FORCE_CACHE_REBUILD", "").lower() in ("true", "1", "yes")
@@ -52,6 +62,8 @@ def main(output_path=None, meta_path=None, now_ts=None):
             return {"skipped": True, "window_start": window_start}
 
     start = time.monotonic()
+    current_block = chain.height
+    log.info("position_monitor start: START_BLOCK=%s current_block=%s", START_BLOCK, current_block)
     user = CONFIG["user"]
     reusd = CONFIG["reusd"]
     reward_tokens = CONFIG["reward_tokens"]
@@ -69,14 +81,28 @@ def main(output_path=None, meta_path=None, now_ts=None):
     cached_data = cache.get("historical_data", {})
     cached_redemptions = cache.get("redemptions", [])
     last_redemption_block = cache.get("last_redemption_block", START_BLOCK - 1)
+    log.info(
+        "Cache loaded: cached_blocks=%s cached_redemptions=%s last_redemption_block=%s",
+        len(cached_blocks),
+        len(cached_redemptions),
+        last_redemption_block,
+    )
 
     new_redemptions = fetch_redemptions(pairs, log, last_redemption_block + 1)
     redemptions = cached_redemptions + new_redemptions
+    log.info("Redemptions total: %s (new=%s)", len(redemptions), len(new_redemptions))
     sample_blocks = build_sample_blocks(redemptions, log, cached_blocks)
+    log.info("Sample blocks total: %s", len(sample_blocks))
     prices = load_prices(reward_tokens, reusd, pairs, log)
     historical_data = {}
     for pair_name, pair_address in pairs.items():
-        log.info("Fetching historical data for %s...", pair_name)
+        cached_records = cached_data.get(pair_name, [])
+        log.info(
+            "Fetching historical data for %s: cached_records=%s sample_blocks=%s",
+            pair_name,
+            len(cached_records),
+            len(sample_blocks),
+        )
         historical_data[pair_name] = fetch_pair_history(
             pair_address,
             user,
@@ -84,7 +110,8 @@ def main(output_path=None, meta_path=None, now_ts=None):
             prices,
             sample_blocks,
             pools,
-            cached_data.get(pair_name, []),
+            cached_records,
+            log=log,
         )
 
     # Print summary table for current block
@@ -169,32 +196,84 @@ def _get_redemption_events(pair_addresses, from_block, to_block):
         {}
     )
 
-    logs = web3.eth.get_logs({
-        'fromBlock': from_block,
-        'toBlock': to_block,
-        'topics': topics,
-        'address': pair_addresses
-    })
-    events = contract.events.Redeemed().process_receipt({'logs': logs})
+    logger = logging.getLogger(__name__)
+    if from_block > to_block:
+        logger.info("No redemption scan needed (from_block %s > to_block %s)", from_block, to_block)
+        return []
+
+    # Chunk the log scan so we show steady progress and avoid provider timeouts on huge ranges.
+    all_events = []
+    scan_start = time.monotonic()
+    start_block = int(from_block)
+    end_block = int(to_block)
+    window = int(REDEMPTION_LOG_CHUNK_BLOCKS)
+    last_progress = 0.0
+
+    cur = start_block
+    while cur <= end_block:
+        chunk_to = min(cur + window - 1, end_block)
+        t0 = time.monotonic()
+        logs = web3.eth.get_logs({
+            'fromBlock': cur,
+            'toBlock': chunk_to,
+            'topics': topics,
+            'address': pair_addresses
+        })
+        events = contract.events.Redeemed().process_receipt({'logs': logs})
+        all_events.extend(events)
+
+        now = time.monotonic()
+        if (now - last_progress) >= PROGRESS_LOG_INTERVAL_SECS:
+            pct = 100.0 * (chunk_to - start_block + 1) / (end_block - start_block + 1)
+            logger.info(
+                "Redemption scan progress: blocks %s-%s/%s (%.1f%%) chunk_logs=%s chunk_events=%s elapsed=%.1fs",
+                cur,
+                chunk_to,
+                end_block,
+                pct,
+                len(logs),
+                len(events),
+                now - scan_start,
+            )
+            last_progress = now
+
+        # If an individual chunk is slow, give a hint about which window is the culprit.
+        dt = time.monotonic() - t0
+        if dt >= 10.0:
+            logger.info("Redemption scan chunk blocks %s-%s took %.1fs", cur, chunk_to, dt)
+
+        cur = chunk_to + 1
 
     redemptions = []
-    for event in events:
-        block = chain[event.blockNumber]
+    block_ts_cache = {}
+    for event in all_events:
+        bn = int(event.blockNumber)
+        ts = block_ts_cache.get(bn)
+        if ts is None:
+            ts = chain[bn].timestamp
+            block_ts_cache[bn] = ts
         redemptions.append({
-            'timestamp': block.timestamp,
-            'datetime': datetime.fromtimestamp(block.timestamp),
-            'block': event.blockNumber,
+            'timestamp': ts,
+            'datetime': datetime.fromtimestamp(ts),
+            'block': bn,
             'pair_address': str(event.address),  # Ensure string, not HexBytes
             'amount': event.args['_amount'] / 1e18,
         })
 
-    logging.getLogger(__name__).info("Found %s redemption events", len(redemptions))
+    logger.info(
+        "Found %s redemption events (scan %.1fs, range %s-%s, %s pairs)",
+        len(redemptions),
+        time.monotonic() - scan_start,
+        from_block,
+        to_block,
+        len(pair_addresses),
+    )
 
     # Debug: show redemption counts per pair address
     from collections import Counter
     addr_counts = Counter(r['pair_address'].lower() for r in redemptions)
     for addr, count in addr_counts.items():
-        logging.getLogger(__name__).info("  %s: %s redemptions", addr, count)
+        logger.info("  %s: %s redemptions", addr, count)
 
     return redemptions
 
@@ -211,8 +290,9 @@ def load_prices(reward_tokens, reusd, pairs, log):
     return prices
 
 
-def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks, pools, cached_records):
+def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks, pools, cached_records, log=None):
     """Fetch position data at each sample block for a single pair."""
+    log = log or logging.getLogger(__name__)
     pair = Contract(pair_address)
     collateral_contract = Contract(pair.collateral())
     asset = collateral_contract.asset()
@@ -226,6 +306,11 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
 
     data = list(cached_records)
     seen_blocks = {d["block"] for d in data}
+    total_targets = len(sample_blocks)
+    to_fetch = total_targets - len(seen_blocks)
+    log.info("History scan %s: need=%s (seen=%s total=%s)", pair_address, max(0, to_fetch), len(seen_blocks), total_targets)
+    last_progress = time.monotonic()
+    fetched = 0
     for block, timestamp in sample_blocks:
         if block in seen_blocks:
             continue
@@ -269,6 +354,20 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
             'rewards': rewards,
             'total_usd': total_usd,
         })
+        fetched += 1
+
+        now = time.monotonic()
+        if (now - last_progress) >= PROGRESS_LOG_INTERVAL_SECS:
+            pct = 100.0 * fetched / max(1, to_fetch)
+            log.info(
+                "History progress %s: fetched=%s/%s (%.1f%%) last_block=%s",
+                pair_address,
+                fetched,
+                max(0, to_fetch),
+                pct,
+                block,
+            )
+            last_progress = now
 
     return data
 
@@ -326,8 +425,17 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     from matplotlib.ticker import FuncFormatter
     from matplotlib.lines import Line2D
 
-    # Enhanced color palette with better contrast
-    colors = ['#3D7A9E', '#D4912E', '#4AA366', '#8B6AAF']
+    # Chart palette (requested)
+    # Stack order is: net collateral, then rewards in CONFIG["reward_tokens"] insertion order.
+    NET_COLLATERAL_COLOR = '#1F77B4'  # blue
+    REWARD_COLOR_BY_SYMBOL = {
+        'rsup': '#7B3FE4',  # purple
+        'crv': '#FF7F0E',   # orange
+        'cvx': '#D62728',   # red
+    }
+    REUSD_PRICE_COLOR = '#4CAF50'  # lighter green for contrast
+    REDEMPTION_VLINE_COLOR = '#555555'  # dark grey
+    GOV_PROPOSAL_16_VLINE_COLOR = '#F1C40F'  # yellow
 
     # Build reward symbols list and labels with prices
     reward_symbols = list(reward_tokens.values())
@@ -335,6 +443,11 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     for addr, symbol in reward_tokens.items():
         price = prices.get(addr, 0)
         reward_labels_with_prices.append(f'{symbol.upper()} (${price:.4f})')
+
+    # Stack colors: net collateral + each reward symbol (in the same order as y_data)
+    stack_colors = [NET_COLLATERAL_COLOR] + [
+        REWARD_COLOR_BY_SYMBOL.get(symbol.lower(), '#999999') for symbol in reward_symbols
+    ]
 
     fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
     fig.patch.set_facecolor('#FAFAFA')
@@ -394,6 +507,9 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
 
     legend_handles, legend_labels = None, None
 
+    # Governance proposal marker (draw on each chart).
+    gov16_dt = datetime.fromtimestamp(get_block_timestamp(GOV_PROPOSAL_16_BLOCK))
+
     for idx, (pair_name, data) in enumerate(sorted_pairs):
         ax = axes[idx]
         ax.set_facecolor('#FAFAFA')
@@ -411,7 +527,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
             y_data.append(values)
 
         # Stacked area chart
-        ax.stackplot(dates, *y_data, labels=stack_labels, colors=colors, alpha=0.8)
+        ax.stackplot(dates, *y_data, labels=stack_labels, colors=stack_colors, alpha=0.8)
 
         # Remove x-axis padding (eliminate gap between y-axis and data start)
         ax.set_xlim(dates[0], dates[-1])
@@ -430,7 +546,7 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
 
             if SHOW_REUSD_PRICE:
                 borrow_prices = [d['borrow_price'] for d in data]
-                ax2.plot(dates, borrow_prices, color='#32CD32', linestyle='--',
+                ax2.plot(dates, borrow_prices, color=REUSD_PRICE_COLOR, linestyle='-',
                          linewidth=1.2, alpha=0.9, label='reUSD Price', zorder=10)
 
             ax2.set_ylim(price_y_min, price_y_max)
@@ -459,16 +575,18 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
                 legend_handles.append(price_line)
                 legend_labels.append('crvUSD Price')
             if SHOW_REUSD_PRICE:
-                price_line = Line2D([0], [0], color='#32CD32', linestyle='--',
+                price_line = Line2D([0], [0], color=REUSD_PRICE_COLOR, linestyle='-',
                                     linewidth=1.2, alpha=0.9, label='reUSD Price')
                 legend_handles.append(price_line)
                 legend_labels.append('reUSD Price')
 
-        # Title with current value and % change from $1000 (centered)
+        # Title with current value, total return from $1000, and APR annualized over the observed period.
         latest_total = data[-1]['total_usd']
         pct_change = ((latest_total - STARTING_VALUE) / STARTING_VALUE) * 100
-        pct_arrow = '+' if pct_change > 0 else ''
-        pct_str = f'({pct_arrow}{pct_change:.1f}%)'
+        elapsed_seconds = max(0.0, (dates[-1] - dates[0]).total_seconds())
+        elapsed_years = elapsed_seconds / (365.25 * 24 * 60 * 60) if elapsed_seconds else 0.0
+        apr = (pct_change / elapsed_years) if elapsed_years > 0 else 0.0
+        pct_str = f'({pct_change:+.1f}% | {apr:+.1f}% APR)'
         ax.set_title(
             f'{pair_name}   ·   Current Value ${latest_total:,.2f} {pct_str}',
             fontsize=11, fontweight='medium', loc='center', pad=8, color='#333'
@@ -483,8 +601,12 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         # Draw redemption event lines for this pair
         pair_redemptions = [r for r in redemptions if r['pair_address'].lower() == pair_address]
         for redemption in pair_redemptions:
-            ax.axvline(x=redemption['datetime'], color='#A94442', linestyle='--',
-                       linewidth=1, alpha=0.8)
+            ax.axvline(x=redemption['datetime'], color=REDEMPTION_VLINE_COLOR, linestyle='--',
+                       linewidth=0.7, alpha=0.8)
+
+        # Draw governance proposal #16 execution marker (same on every chart)
+        ax.axvline(x=gov16_dt, color=GOV_PROPOSAL_16_VLINE_COLOR, linestyle='-',
+                   linewidth=1, alpha=0.9)
 
         # Clean up spines
         ax.spines['top'].set_visible(False)
@@ -518,10 +640,15 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
     )
 
     # Add figure-level legend above all charts
-    redemption_line = Line2D([0], [0], color='#A94442', linestyle='--',
-                             linewidth=1, alpha=0.8, label='Redemption')
+    redemption_line = Line2D([0], [0], color=REDEMPTION_VLINE_COLOR, linestyle='--',
+                             linewidth=0.7, alpha=0.8, label='Redemption')
     legend_handles.append(redemption_line)
     legend_labels.append('Redemption')
+
+    gov16_line = Line2D([0], [0], color=GOV_PROPOSAL_16_VLINE_COLOR, linestyle='-',
+                        linewidth=1, alpha=0.9, label='Gov Proposal #16')
+    legend_handles.append(gov16_line)
+    legend_labels.append('Gov Proposal #16')
     fig.legend(
         legend_handles, legend_labels,
         loc='upper center', ncol=len(legend_labels), fontsize=8, frameon=True,

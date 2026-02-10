@@ -61,6 +61,7 @@ class MarketData:
     resupply_historical_borrow_rates: list[float]
     resupply_ltv: float
     resupply_rewards_rate: float
+    resupply_interest_rate_calculator: str
 
     def to_json(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
@@ -68,7 +69,7 @@ class MarketData:
     def __init__(self, pair):
         self.pair = pair
         pair = Contract(pair)
-        
+        self.resupply_interest_rate_calculator = pair.rateCalculator()
         self.name = pair.name()
         print(f'Processing pair: {self.name} {pair.address}')
         self.market = pair.collateral()
