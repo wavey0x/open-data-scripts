@@ -28,6 +28,12 @@ CONFIG = {
         "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B": "cvx",
         "0xD533a949740bb3306d119CC777fa900bA034cd52": "crv",
     },
+    "pair_reward_tokens": {
+        # DOLA rewards are currently emitted only by the sdola pair.
+        "0x27AB448a75d548ECfF73f8b4F36fCc9496768797": {
+            "0x865377367054516e17014CcdED1e7d814EDC9ce4": "dola",
+        },
+    },
     "pairs": {
         "16x (wsteth)": "0x4A7c64932d1ef0b4a2d430ea10184e3B87095E33",
         "10x (wbtc)": "0x2d8ecd48b58e53972dBC54d8d0414002B41Abc9D",
@@ -66,13 +72,30 @@ def main(output_path=None, meta_path=None, now_ts=None):
     current_block = chain.height
     log.info("position_monitor start: START_BLOCK=%s current_block=%s", START_BLOCK, current_block)
     user = CONFIG["user"]
-    reusd = CONFIG["reusd"]
+    reusd = _normalize_address(CONFIG["reusd"])
     reward_tokens = CONFIG["reward_tokens"]
+    pair_reward_tokens = CONFIG.get("pair_reward_tokens", {})
     pairs = CONFIG["pairs"]
     pools = CONFIG["pools"]
+    reward_tokens_by_pair, all_reward_tokens, normalized_pair_reward_tokens = _build_reward_tokens_by_pair(
+        reward_tokens,
+        pair_reward_tokens,
+        pairs,
+    )
+    pair_reward_symbols = {
+        pair_name: list(dict.fromkeys(reward_tokens_by_pair[_normalize_address(pair_address)].values()))
+        for pair_name, pair_address in pairs.items()
+    }
 
     cache_path = _get_open_data_path(CONFIG["cache_file"])
-    cache_config = _cache_config(user, reusd, reward_tokens, pairs, pools)
+    cache_config = _cache_config(
+        user,
+        reusd,
+        all_reward_tokens,
+        normalized_pair_reward_tokens,
+        pairs,
+        pools,
+    )
     if force_cache_rebuild:
         log.info("FORCE_CACHE_REBUILD enabled; ignoring existing cache")
         cache = {}
@@ -94,7 +117,7 @@ def main(output_path=None, meta_path=None, now_ts=None):
     log.info("Redemptions total: %s (new=%s)", len(redemptions), len(new_redemptions))
     sample_blocks = build_sample_blocks(redemptions, log, cached_blocks)
     log.info("Sample blocks total: %s", len(sample_blocks))
-    prices = load_prices(reward_tokens, reusd, pairs, log)
+    prices = load_prices(all_reward_tokens, reusd, pairs, log)
     historical_data = {}
     for pair_name, pair_address in pairs.items():
         cached_records = cached_data.get(pair_name, [])
@@ -107,7 +130,7 @@ def main(output_path=None, meta_path=None, now_ts=None):
         historical_data[pair_name] = fetch_pair_history(
             pair_address,
             user,
-            reward_tokens,
+            reward_tokens_by_pair[_normalize_address(pair_address)],
             prices,
             sample_blocks,
             pools,
@@ -116,10 +139,22 @@ def main(output_path=None, meta_path=None, now_ts=None):
         )
 
     # Print summary table for current block
-    print_position_summary(historical_data, reward_tokens, prices)
+    print_position_summary(
+        historical_data,
+        all_reward_tokens,
+        prices,
+        pair_reward_symbols=pair_reward_symbols,
+    )
 
     # Create stacked area charts with redemption overlays
-    fig = render_chart(historical_data, reward_tokens, redemptions, pairs, prices)
+    fig = render_chart(
+        historical_data,
+        all_reward_tokens,
+        redemptions,
+        pairs,
+        prices,
+        pair_reward_symbols=pair_reward_symbols,
+    )
     if output_path:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         fig.savefig(output_path, dpi=150)
@@ -130,7 +165,8 @@ def main(output_path=None, meta_path=None, now_ts=None):
             output_path,
             user,
             pairs,
-            reward_tokens,
+            all_reward_tokens,
+            normalized_pair_reward_tokens,
             prices,
             latest_block,
         )
@@ -142,6 +178,33 @@ def main(output_path=None, meta_path=None, now_ts=None):
         _save_cache(cache_path, cache_config, sample_blocks, historical_data, redemptions)
     log.info("position_monitor complete in %.2fs", time.monotonic() - start)
     return historical_data
+
+
+def _normalize_address(address):
+    return str(address).lower()
+
+
+def _normalize_reward_token_map(reward_tokens):
+    return {_normalize_address(addr): symbol for addr, symbol in reward_tokens.items()}
+
+
+def _build_reward_tokens_by_pair(default_reward_tokens, pair_reward_tokens, pairs):
+    normalized_default = _normalize_reward_token_map(default_reward_tokens)
+    normalized_pair_overrides = {}
+    for pair_ref, token_map in (pair_reward_tokens or {}).items():
+        pair_address = pairs.get(pair_ref, pair_ref)
+        normalized_pair_overrides[_normalize_address(pair_address)] = _normalize_reward_token_map(token_map)
+
+    reward_tokens_by_pair = {}
+    all_reward_tokens = dict(normalized_default)
+    for pair_address in pairs.values():
+        pair_key = _normalize_address(pair_address)
+        merged = dict(normalized_default)
+        merged.update(normalized_pair_overrides.get(pair_key, {}))
+        reward_tokens_by_pair[pair_key] = merged
+        all_reward_tokens.update(merged)
+
+    return reward_tokens_by_pair, all_reward_tokens, normalized_pair_overrides
 
 
 def build_sample_blocks(redemptions, log, cached_blocks):
@@ -325,12 +388,13 @@ def _get_redemption_events(pair_addresses, from_block, to_block):
 
 def load_prices(reward_tokens, reusd, pairs, log):
     all_tokens = set(reward_tokens.keys())
-    all_tokens.add(reusd)
+    all_tokens.add(_normalize_address(reusd))
     for pair_address in pairs.values():
         pair = Contract(pair_address)
         collateral_contract = Contract(pair.collateral())
-        all_tokens.add(collateral_contract.asset())
+        all_tokens.add(_normalize_address(collateral_contract.asset()))
     prices = get_prices(tokens=list(all_tokens))
+    prices = {_normalize_address(addr): value for addr, value in prices.items()}
     log.info("Fetched prices for %s tokens", len(prices))
     return prices
 
@@ -340,7 +404,7 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
     log = log or logging.getLogger(__name__)
     pair = Contract(pair_address)
     collateral_contract = Contract(pair.collateral())
-    asset = collateral_contract.asset()
+    asset = _normalize_address(collateral_contract.asset())
 
     pool = Contract(pools["borrow_oracle"])
     crvusd_usdc_pool = Contract(pools["collateral_oracle"])
@@ -356,6 +420,7 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
     log.info("History scan %s: need=%s (seen=%s total=%s)", pair_address, max(0, to_fetch), len(seen_blocks), total_targets)
     last_progress = time.monotonic()
     fetched = 0
+    unknown_reward_tokens_seen = set()
     for block, timestamp in sample_blocks:
         if block in seen_blocks:
             continue
@@ -379,7 +444,18 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
         rewards = {}
         for i in range(len(earned)):
             token_address, amount = earned[i]
-            symbol = reward_tokens[token_address]
+            token_address = _normalize_address(token_address)
+            symbol = reward_tokens.get(token_address)
+            if symbol is None:
+                if token_address not in unknown_reward_tokens_seen:
+                    log.warning(
+                        "Skipping unknown reward token %s for pair %s at block %s",
+                        token_address,
+                        pair_address,
+                        block,
+                    )
+                    unknown_reward_tokens_seen.add(token_address)
+                continue
             reward_price = prices.get(token_address, 0)
             rewards[symbol] = (amount / 1e18) * reward_price
 
@@ -417,11 +493,18 @@ def fetch_pair_history(pair_address, user, reward_tokens, prices, sample_blocks,
     return data
 
 
-def render_chart(historical_data, reward_symbols, redemptions, pairs, prices):
-    return create_historical_charts(historical_data, reward_symbols, redemptions, pairs, prices)
+def render_chart(historical_data, reward_tokens, redemptions, pairs, prices, pair_reward_symbols=None):
+    return create_historical_charts(
+        historical_data,
+        reward_tokens,
+        redemptions,
+        pairs,
+        prices,
+        pair_reward_symbols=pair_reward_symbols,
+    )
 
 
-def print_position_summary(historical_data, reward_tokens, prices):
+def print_position_summary(historical_data, reward_tokens, prices, pair_reward_symbols=None):
     """Print a colorized table showing current position breakdown."""
     # ANSI color codes
     BLUE = '\033[94m'
@@ -434,7 +517,8 @@ def print_position_summary(historical_data, reward_tokens, prices):
     RESET = '\033[0m'
 
     reward_colors = [ORANGE, GREEN, PURPLE]
-    reward_symbols = list(reward_tokens.values())
+    default_reward_symbols = list(dict.fromkeys(reward_tokens.values()))
+    symbol_to_address = {symbol: addr for addr, symbol in reward_tokens.items()}
 
     print(f"\n{BOLD}{'='*75}{RESET}")
     print(f"{BOLD}POSITION SUMMARY (Current Block){RESET}")
@@ -442,6 +526,7 @@ def print_position_summary(historical_data, reward_tokens, prices):
 
     for pair_name, data in historical_data.items():
         latest = data[-1]
+        reward_symbols = pair_reward_symbols.get(pair_name, default_reward_symbols) if pair_reward_symbols else default_reward_symbols
         print(f"{BOLD}{pair_name}{RESET}")
 
         # Collateral breakdown
@@ -453,8 +538,8 @@ def print_position_summary(historical_data, reward_tokens, prices):
         for i, symbol in enumerate(reward_symbols):
             color = reward_colors[i % len(reward_colors)]
             usd_value = latest['rewards'].get(symbol, 0)
-            addr = [k for k, v in reward_tokens.items() if v == symbol][0]
-            price = prices.get(addr, 0)
+            addr = symbol_to_address.get(symbol)
+            price = prices.get(addr, 0) if addr else 0
             amount = usd_value / price if price > 0 else 0
             print(f"  {color}{symbol.upper():14}{RESET}  ${usd_value:>12,.4f}  ({amount:,.4f} @ ${price:.4f})")
 
@@ -464,11 +549,12 @@ def print_position_summary(historical_data, reward_tokens, prices):
     print(f"{'='*75}\n")
 
 
-def create_historical_charts(historical_data, reward_tokens, redemptions, pairs, prices):
+def create_historical_charts(historical_data, reward_tokens, redemptions, pairs, prices, pair_reward_symbols=None):
     """Create 3 stacked area charts, one per position, with redemption overlays."""
     import matplotlib.dates as mdates
     from matplotlib.ticker import FuncFormatter
     from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
 
     # Chart palette (requested)
     # Stack order is: net collateral, then rewards in CONFIG["reward_tokens"] insertion order.
@@ -477,22 +563,22 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         'rsup': '#9B6CF0',  # lighter purple
         'crv': '#FFA24A',   # lighter orange
         'cvx': '#E35D5B',   # lighter red
+        'dola': '#5BA7B0',  # muted teal
     }
     REUSD_PRICE_COLOR = '#4CAF50'  # lighter green for contrast
     REDEMPTION_VLINE_COLOR = '#555555'  # dark grey
     GOV_PROPOSAL_16_VLINE_COLOR = '#1F77B4'  # blue
 
     # Build reward symbols list and labels with prices
-    reward_symbols = list(reward_tokens.values())
-    reward_labels_with_prices = []
-    for addr, symbol in reward_tokens.items():
-        price = prices.get(addr, 0)
-        reward_labels_with_prices.append(f'{symbol.upper()} (${price:.4f})')
-
-    # Stack colors: net collateral + each reward symbol (in the same order as y_data)
-    stack_colors = [NET_COLLATERAL_COLOR] + [
-        REWARD_COLOR_BY_SYMBOL.get(symbol.lower(), '#999999') for symbol in reward_symbols
-    ]
+    default_reward_symbols = list(dict.fromkeys(reward_tokens.values()))
+    symbol_to_address = {symbol: addr for addr, symbol in reward_tokens.items()}
+    legend_reward_symbols = default_reward_symbols
+    if pair_reward_symbols:
+        legend_reward_symbols = list(dict.fromkeys(
+            symbol
+            for pair_name in historical_data.keys()
+            for symbol in pair_reward_symbols.get(pair_name, default_reward_symbols)
+        ))
 
     fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
     fig.patch.set_facecolor('#FAFAFA')
@@ -546,7 +632,31 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         reverse=True
     )
 
-    legend_handles, legend_labels = None, None
+    legend_handles = [
+        Patch(facecolor=NET_COLLATERAL_COLOR, alpha=0.8, label='Net Collateral')
+    ]
+    legend_labels = ['Net Collateral']
+    for symbol in legend_reward_symbols:
+        addr = symbol_to_address.get(symbol)
+        price = prices.get(addr, 0) if addr else 0
+        legend_handles.append(
+            Patch(
+                facecolor=REWARD_COLOR_BY_SYMBOL.get(symbol.lower(), '#999999'),
+                alpha=0.8,
+                label=f'{symbol.upper()} (${price:.4f})',
+            )
+        )
+        legend_labels.append(f'{symbol.upper()} (${price:.4f})')
+    if SHOW_CRVUSD_PRICE:
+        price_line = Line2D([0], [0], color='#888888', linestyle='--',
+                            linewidth=1.2, alpha=0.9, label='crvUSD Price')
+        legend_handles.append(price_line)
+        legend_labels.append('crvUSD Price')
+    if SHOW_REUSD_PRICE:
+        price_line = Line2D([0], [0], color=REUSD_PRICE_COLOR, linestyle='-',
+                            linewidth=1.2, alpha=0.9, label='reUSD Price')
+        legend_handles.append(price_line)
+        legend_labels.append('reUSD Price')
 
     # Governance proposal marker (draw on each chart).
     gov16_dt = datetime.fromtimestamp(get_block_timestamp(GOV_PROPOSAL_16_BLOCK))
@@ -559,11 +669,21 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
         dates = [d['datetime'] for d in data]
         net_collateral = [d['net_collateral'] for d in data]
 
-        # Build stacked arrays: net_collateral + each reward
+        pair_symbols = pair_reward_symbols.get(pair_name, default_reward_symbols) if pair_reward_symbols else default_reward_symbols
+        reward_labels_with_prices = []
+        for symbol in pair_symbols:
+            addr = symbol_to_address.get(symbol)
+            price = prices.get(addr, 0) if addr else 0
+            reward_labels_with_prices.append(f'{symbol.upper()} (${price:.4f})')
+        stack_colors = [NET_COLLATERAL_COLOR] + [
+            REWARD_COLOR_BY_SYMBOL.get(symbol.lower(), '#999999') for symbol in pair_symbols
+        ]
+
+        # Build stacked arrays: net_collateral + each reward configured for this pair
         y_data = [net_collateral]
         stack_labels = ['Net Collateral'] + reward_labels_with_prices
 
-        for symbol in reward_symbols:
+        for symbol in pair_symbols:
             values = [d['rewards'].get(symbol, 0) for d in data]
             y_data.append(values)
 
@@ -606,20 +726,6 @@ def create_historical_charts(historical_data, reward_tokens, redemptions, pairs,
             ax2.spines['right'].set_linewidth(0.5)
             # Reference line at 1.0 (peg)
             ax2.axhline(y=1.0, color='#AAAAAA', linestyle=':', linewidth=0.5, alpha=0.4, zorder=9)
-
-        # Capture legend handles once
-        if legend_handles is None:
-            legend_handles, legend_labels = ax.get_legend_handles_labels()
-            if SHOW_CRVUSD_PRICE:
-                price_line = Line2D([0], [0], color='#888888', linestyle='--',
-                                    linewidth=1.2, alpha=0.9, label='crvUSD Price')
-                legend_handles.append(price_line)
-                legend_labels.append('crvUSD Price')
-            if SHOW_REUSD_PRICE:
-                price_line = Line2D([0], [0], color=REUSD_PRICE_COLOR, linestyle='-',
-                                    linewidth=1.2, alpha=0.9, label='reUSD Price')
-                legend_handles.append(price_line)
-                legend_labels.append('reUSD Price')
 
         # Title with current value, total return from $1000, and APR annualized over the observed period.
         latest_total = data[-1]['total_usd']
@@ -708,11 +814,12 @@ def _get_open_data_path(filename):
     return os.path.join(open_data_root, filename)
 
 
-def _cache_config(user, reusd, reward_tokens, pairs, pools):
+def _cache_config(user, reusd, reward_tokens, pair_reward_tokens, pairs, pools):
     return {
         "user": user,
         "reusd": reusd,
         "reward_tokens": reward_tokens,
+        "pair_reward_tokens": pair_reward_tokens,
         "pairs": pairs,
         "pools": pools,
         "start_block": START_BLOCK,
@@ -826,7 +933,7 @@ def _should_run_for_window(meta_path, output_path, window_start):
         return True
 
 
-def _write_meta(meta_path, now_ts, output_path, user, pairs, reward_tokens, prices, latest_block):
+def _write_meta(meta_path, now_ts, output_path, user, pairs, reward_tokens, pair_reward_tokens, prices, latest_block):
     if not meta_path:
         return
     os.makedirs(os.path.dirname(meta_path), exist_ok=True)
@@ -840,6 +947,7 @@ def _write_meta(meta_path, now_ts, output_path, user, pairs, reward_tokens, pric
         "user": user,
         "pairs": pairs,
         "reward_tokens": reward_tokens,
+        "pair_reward_tokens": pair_reward_tokens,
         "prices": prices,
     }
     with open(meta_path, "w") as handle:
