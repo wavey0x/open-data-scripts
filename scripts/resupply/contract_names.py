@@ -9,8 +9,10 @@ CACHE_FILE = 'contract_names_cache.json'
 # Hardcoded contract names for addresses not in the GitHub JSON
 HARDCODED_CONTRACTS = {
     '0xfdce0267803c6a0d209d3721d2f01fd618e9cbf8': 'PRISMA_FEE_RECEIVER',
+    '0x03E1538D33778C3711A075AF99FC75FCb31Ed341': 'VECRV_OPERATOR',
     '0x490b8C6007fFa5d3728A49c2ee199e51f05D2F7e': 'PRISMA_VOTER',
 }
+HARDCODED_CONTRACTS = {address.lower(): name for address, name in HARDCODED_CONTRACTS.items()}
 
 def get_cache_path() -> Path:
     """Get the path to the cache file in the data directory."""
@@ -80,15 +82,16 @@ def get_contract_name(address: str) -> Optional[str]:
     """Get contract name for address, fetching from API if not in cache."""
     if not address:
         return None
+    normalized_address = str(address).lower()
     
     # Check hardcoded contracts first
-    hardcoded_result = HARDCODED_CONTRACTS.get(address.lower())
+    hardcoded_result = HARDCODED_CONTRACTS.get(normalized_address)
     if hardcoded_result:
         return hardcoded_result
     
     # Try cache first
     contract_names = get_contract_names()
-    result = contract_names.get(address.lower())
+    result = contract_names.get(normalized_address)
     
     # If not found and we have cache, try API to get updated data
     if result is None and contract_names:
@@ -97,6 +100,6 @@ def get_contract_name(address: str) -> Optional[str]:
             # Update cache with any new items
             contract_names.update(api_data)
             save_cache(contract_names)
-            result = contract_names.get(address.lower())
+            result = contract_names.get(normalized_address)
     
     return result
