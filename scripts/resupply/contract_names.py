@@ -9,6 +9,7 @@ CACHE_FILE = 'contract_names_cache.json'
 # Hardcoded contract names for addresses not in the GitHub JSON
 HARDCODED_CONTRACTS = {
     '0xfdce0267803c6a0d209d3721d2f01fd618e9cbf8': 'PRISMA_FEE_RECEIVER',
+    '0x490b8C6007fFa5d3728A49c2ee199e51f05D2F7e': 'PRISMA_VOTER',
 }
 
 def get_cache_path() -> Path:
