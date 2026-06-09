@@ -1,33 +1,14 @@
+import json
 import logging
+from pathlib import Path
 
 from brownie import Contract
 from constants import YCRV_SPLITTER, YCRV_RECEIVER, YCRV_FEE_BURNER, TRADE_HANDLER, YCRV, CRVUSD
 
 log = logging.getLogger(__name__)
 
-ERC20_METADATA_ABI = [
-    {
-        "name": "balanceOf",
-        "type": "function",
-        "stateMutability": "view",
-        "inputs": [{"name": "account", "type": "address"}],
-        "outputs": [{"name": "", "type": "uint256"}],
-    },
-    {
-        "name": "decimals",
-        "type": "function",
-        "stateMutability": "view",
-        "inputs": [],
-        "outputs": [{"name": "", "type": "uint8"}],
-    },
-    {
-        "name": "symbol",
-        "type": "function",
-        "stateMutability": "view",
-        "inputs": [],
-        "outputs": [{"name": "", "type": "string"}],
-    },
-]
+ABIS_DIR = Path(__file__).resolve().parents[3] / "abis"
+ERC20_METADATA_ABI = json.loads((ABIS_DIR / "erc20_metadata.json").read_text(encoding="utf-8"))
 
 
 def erc20_metadata_contract(address):
