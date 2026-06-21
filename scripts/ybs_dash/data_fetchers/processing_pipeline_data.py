@@ -12,7 +12,7 @@ ERC20_METADATA_ABI = json.loads((ABIS_DIR / "erc20_metadata.json").read_text(enc
 
 
 def erc20_metadata_contract(address):
-    return Contract.from_abi("ERC20Metadata", address, ERC20_METADATA_ABI)
+    return Contract.from_abi("ERC20", address, ERC20_METADATA_ABI, persist=False)
 
 
 def build_data(token, staker_data):
