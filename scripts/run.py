@@ -64,9 +64,6 @@ def push_to_gh(project_directory):
     home_dir = os.getenv('HOME')
     key = os.getenv('KEY')
     os.environ['GIT_SSH_COMMAND'] = f'ssh -i {home_dir}/.ssh/{key}' 
-    github_repo = 'github.com/wavey0x/open-data.git'
-    github_token = os.getenv('GITHUB_PAT')
-    remote_url = f'https://{github_token}@{github_repo}'
     bot_name = os.getenv("BOT_GIT_NAME", "wavey0x-bot")
     bot_email = os.getenv("BOT_GIT_EMAIL", "wavey0x-bot@proton.me")
     os.chdir(project_directory)
@@ -86,7 +83,6 @@ def push_to_gh(project_directory):
         os.environ['GIT_AUTHOR_EMAIL'] = bot_email
         os.environ['GIT_COMMITTER_NAME'] = bot_name
         os.environ['GIT_COMMITTER_EMAIL'] = bot_email
-        log.info("Remote URL: %s", remote_url)
         current_datetime = datetime.datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
         commit_message = f'automated data write: {formatted_datetime}'
@@ -94,12 +90,12 @@ def push_to_gh(project_directory):
         subprocess.run(['git', 'commit', '-m', commit_message], check=True)
 
         # Push the changes
-        subprocess.run(['git', 'push', remote_url, 'master', '--force'], check=True)
+        subprocess.run(['git', 'push', 'origin', 'master', '--force'], check=True)
 
         log.info("Changes committed and pushed to GitHub successfully.")
 
     except subprocess.CalledProcessError as e:
-        log.exception("push_to_gh error: %s", e)
+        log.error("push_to_gh failed with exit code %s", e.returncode)
 
 def fetch_from_gh(project_directory):
     home_dir = os.getenv('HOME')

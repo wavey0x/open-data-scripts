@@ -34,7 +34,11 @@ deployer = Contract(RESUPPLY_DEPLOYER)
 utils = Contract(UTILITIES)
 rsup_price = 0
 ir_samples_to_check = []
-CURVE_LEND_PROTOCOL_NAMES = {0: 'CurveLend', 2: 'CurveLendV2'}
+CURVE_LEND_V2_PROTOCOL_ID = 2
+CURVE_LEND_PROTOCOL_NAMES = {
+    0: 'CurveLend',
+    CURVE_LEND_V2_PROTOCOL_ID: 'CurveLendV2',
+}
 FRAX_LEND_PROTOCOL_ID = 1
 
 class MarketData:
@@ -135,7 +139,10 @@ class MarketData:
             controller = Contract(market.controller())
             self.controller = controller.address
             self.total_debt = controller.total_debt() / 1e18
-            self.liquidity = asset.balanceOf(controller.address) / 1e18
+            if self.protocol_id == CURVE_LEND_V2_PROTOCOL_ID:
+                self.liquidity = controller.available_balance() / 1e18
+            else:
+                self.liquidity = asset.balanceOf(controller.address) / 1e18
             self.total_supplied = market.totalAssets() / 1e18
             self.utilization = 0
             if self.total_supplied > 0:
