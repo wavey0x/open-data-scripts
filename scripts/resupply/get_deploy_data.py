@@ -1,30 +1,19 @@
 from brownie import Contract, chain
 from utils.utils import contract_creation_block
-from config import RESUPPLY_REGISTRY
-from pprint import pprint
+from config import RESUPPLY_DEPLOYER, RESUPPLY_REGISTRY
 
 def main():
     registry = Contract(RESUPPLY_REGISTRY)
+    deployer = Contract(RESUPPLY_DEPLOYER)
     pairs = registry.getAllPairAddresses()
     deploy_info = {}
-    for pair in pairs:
-        deploy_block = contract_creation_block(pair)
+    for pair_address in pairs:
+        deploy_block = contract_creation_block(pair_address)
         deploy_ts = chain[deploy_block].timestamp
-        pair = Contract(pair)
+        pair = Contract(pair_address)
         name = pair.name()
-        collateral = Contract(pair.collateral())
-        protocol_id = 0
-        if not hasattr(collateral, 'collateral_token'):
-            protocol_id = 1
+        protocol_id = deployer.deployInfo(pair_address)[0]
 
-        # Make sure 
-        if protocol_id == 0:
-            assert 'CurveLend' in name, f"CurveLend not in name: {name}"
-        else:
-            assert protocol_id == 1, f"protocol_id is not 1: {protocol_id}"
-            assert 'FraxLend' not in name, f"FraxLend in name: {name}"
-
-        
         deploy_info[pair.address] = {
             "protocol_id": protocol_id,
             "deploy_block": deploy_block,

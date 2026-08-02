@@ -22,6 +22,7 @@ import requests
 from utils.utils import (
     get_prices,
     closest_block_before_timestamp,
+    contract_creation_block,
     get_token_logo_url,
     get_coingecko_tokens
 )
@@ -33,10 +34,14 @@ deployer = Contract(RESUPPLY_DEPLOYER)
 utils = Contract(UTILITIES)
 rsup_price = 0
 ir_samples_to_check = []
+CURVE_LEND_PROTOCOL_NAMES = {0: 'CurveLend', 2: 'CurveLendV2'}
+FRAX_LEND_PROTOCOL_ID = 1
 
 class MarketData:
     pair: str
     name: str  # collat token symbol / borrow token symbol
+    protocol_id: int
+    market_name: str
     collat_token: str
     deposit_token: str
     deposit_token_logo: str
@@ -74,7 +79,7 @@ class MarketData:
         print(f'Processing pair: {self.name} {pair.address}')
         self.market = pair.collateral()
         market = Contract(self.market)
-        self.protocol_id = 0 if hasattr(market, 'collateral_token') else 1
+        self.protocol_id = deployer.deployInfo(pair.address)[0]
         self.resupply_available_liquidity = pair.totalDebtAvailable() / 1e18
         borrow = pair.totalBorrow()
         self.resupply_total_debt = borrow[0] / 1e18
@@ -84,12 +89,15 @@ class MarketData:
             self.resupply_utilization = self.resupply_total_debt / self.resupply_borrow_limit
         self.resupply_borrow_rate = utils.getPairInterestRate.call(pair) * 365 * 86400 / 1e18
         self.resupply_historical_borrow_rates = []
-        for i in range(len(ir_samples_to_check)):
-            historical_rate = utils.getPairInterestRate.call(pair, block_identifier=ir_samples_to_check[i]['block']) * 365 * 86400 / 1e18
+        pair_creation_block = contract_creation_block(pair.address)
+        for sample in ir_samples_to_check:
+            if pair_creation_block is None or sample['block'] < pair_creation_block:
+                continue
+            historical_rate = utils.getPairInterestRate.call(pair, block_identifier=sample['block']) * 365 * 86400 / 1e18
             self.resupply_historical_borrow_rates.append(
                 {
-                    'block': ir_samples_to_check[i]['block'],
-                    'ts': ir_samples_to_check[i]['ts'],
+                    'block': sample['block'],
+                    'ts': sample['ts'],
                     'borrow_rate': historical_rate
                 }
             )
@@ -102,7 +110,7 @@ class MarketData:
             price = 1e18
         self.resupply_pps = price
         self.resupply_total_supplied = self.resupply_total_collateral * price
-        if self.protocol_id == 0:
+        if self.protocol_id in CURVE_LEND_PROTOCOL_NAMES:
             self.resupply_total_collateral /= 1_000
         self.resupply_ltv = 0
         if self.resupply_total_supplied > 0:
@@ -113,8 +121,8 @@ class MarketData:
             price_of_deposit = borrow[0] / borrow[1]
             self.resupply_lend_rate = utils.apr(rates[0] / 1e36, rsup_price * 1e18, price_of_deposit * 1e18) / 1e18
         
-        if self.protocol_id == 0:
-            self.market_name = 'CurveLend'
+        if self.protocol_id in CURVE_LEND_PROTOCOL_NAMES:
+            self.market_name = CURVE_LEND_PROTOCOL_NAMES[self.protocol_id]
             market = Contract(self.market)
             self.collat_token = market.collateral_token()
             collat_token = Contract(self.collat_token)
@@ -144,7 +152,7 @@ class MarketData:
             self.deposit_token_logo = get_token_logo_url(self.deposit_token)
             self.collateral_token_logo = get_token_logo_url(self.collat_token)
             
-        elif self.protocol_id == 1:
+        elif self.protocol_id == FRAX_LEND_PROTOCOL_ID:
             self.market_name = 'FraxLend'
             market = Contract(self.market)
             self.collat_token = market.collateralContract()
@@ -175,6 +183,9 @@ class MarketData:
             self.controller = "0x0000000000000000000000000000000000000000"
             self.deposit_token_logo = get_token_logo_url(self.deposit_token)
             self.collateral_token_logo = get_token_logo_url(self.collat_token)
+
+        else:
+            raise ValueError(f'Unsupported Resupply protocol ID: {self.protocol_id}')
 
 def get_resupply_pairs_and_collaterals():
     global rsup_price, ir_samples_to_check
